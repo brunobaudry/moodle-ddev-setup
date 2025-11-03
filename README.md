@@ -56,7 +56,7 @@ Then you'll be prompted to enter the php version and the moodle version.
 ```
 Expl :
 ```bash
-./moodle_ddev.sh --php 8.4 --version 501 [--db <mariadb|mysql|postgres>] [--force] [--root <folder>]
+./moodle_ddev.sh --php 8.4 --version 501
 ```
 
 ```bash
