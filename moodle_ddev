@@ -94,6 +94,8 @@ php_version=""
 moodle_version=""
 force=false
 root_folder="."  # You can change this to any desired root path
+db_type="mariadb"  # default
+
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --php)
@@ -102,6 +104,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     --version)
       moodle_version="$2"
+      shift 2
+      ;;
+    --db)
+      db_type="$2"
       shift 2
       ;;
     --force)
@@ -114,14 +120,12 @@ while [[ $# -gt 0 ]]; do
       ;;
     *)
       echo "❌ Unknown option: $1"
-      echo "Usage: $0 --php <version> --version <moodle_version> [--force] [--root <folder>]"
+      echo "Usage: $0 --php <version> --version <moodle_version> [--db <mariadb|mysql|postgres>] [--force] [--root <folder>]"
       exit 1
       ;;
   esac
 done
 
-# Build full project path
-project_dir="${root_folder}/moodle${moodle_version}"
 
 
 # -------------------------------
@@ -149,12 +153,23 @@ if ! validate_moodle_version "$moodle_version"; then
   echo "❌ Invalid Moodle version. Allowed: 401–501 or 4.x.x/5.x.x."
   exit 1
 fi
+if [[ ! "$db_type" =~ ^(mariadb|mysql|postgres|mssql)$ ]]; then
+  echo "❌ Invalid database type. Allowed: mariadb, mysql, postgres, mssql"
+  exit 1
+fi
 
-project_dir="moodle${moodle_version}"
+# Set the project name
+project_name="moodle${moodle_version}-php${php_version}-db${db_type}"
+# Build full project path
+project_dir="${root_folder}/${project_name}"
+
 if [[ -d "$project_dir" && "$force" != true ]]; then
   echo "⚠️ Directory '$project_dir' already exists. Use --force to overwrite."
   exit 1
 fi
+
+
+
 
 rm -rf "$project_dir"
 mkdir "$project_dir"
@@ -198,12 +213,13 @@ if ! ddev exec php ./moodle/admin/cli/install.php \
   --agree-license \
   --wwwroot="$wwwroot" \
   --dbtype=mariadb \
+  --dbtype="$db_type" \
   --dbhost=db \
   --dbname=db \
   --dbuser=db \
   --dbpass=db \
-  --fullname="DDEV Moodle $moodle_version" \
-  --shortname="DDEV$moodle_version" \
+  --fullname="$project_name" \
+  --shortname="${moodle_version}-${php_version}-${db_type}" \
   --adminpass=1234; then
   echo "❌ Moodle CLI installation failed."
   cleanup_failed_install
