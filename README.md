@@ -92,7 +92,7 @@ https://jqlang.org/
 - add mounts
 
 ## Delete
-use the moodle_ddev_delete.sh to remove an instal cleany.
+use the moodle_ddev_delete.sh to remove an installation cleany.
 
 ```
 moodle_ddev_delete.sh <main_folder_path>
