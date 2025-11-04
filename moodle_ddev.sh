@@ -36,9 +36,24 @@ check_environment() {
 # -------------------------------
 validate_php_version() {
   case "$1" in
-    8.2|8.3|8.4) return 0 ;;
+    8.0|8.1|8.2|8.3|8.4) return 0 ;;
     *) return 1 ;;
   esac
+}
+
+validate_compatibility() {
+  local moodle="$1"
+  local php="$2"
+
+  if [[ "$moodle" =~ ^401|402$ ]]; then
+    [[ "$php" == "8.0" || "$php" == "8.1" ]] && return 0
+  elif [[ "$moodle" =~ ^403|404|405$ ]]; then
+    [[ "$php" == "8.0" || "$php" == "8.1" || "$php" == "8.2" ]] && return 0
+  elif [[ "$moodle" =~ ^500|501$ ]]; then
+    [[ "$php" == "8.2" || "$php" == "8.3" ]] && return 0
+  fi
+
+  return 1
 }
 
 validate_moodle_version() {
@@ -135,28 +150,46 @@ check_environment
 
 
 # Interactive fallback
-if [[ -z "$php_version" ]]; then
-  read -p "Enter PHP version (8.2, 8.3, 8.4): " php_version
-fi
 
 if [[ -z "$moodle_version" ]]; then
   read -p "Enter Moodle version (e.g. 401 or 5.1.0): " moodle_version
-fi
-
-# validates
-if ! validate_php_version "$php_version"; then
-  echo "❌ Invalid PHP version. Allowed: 8.2, 8.3, 8.4."
-  exit 1
 fi
 
 if ! validate_moodle_version "$moodle_version"; then
   echo "❌ Invalid Moodle version. Allowed: 401–501 or 4.x.x/5.x.x."
   exit 1
 fi
-if [[ ! "$db_type" =~ ^(mariadb|mysql|postgres|mssql)$ ]]; then
-  echo "❌ Invalid database type. Allowed: mariadb, mysql, postgres, mssql"
+
+if [[ -z "$php_version" ]]; then
+  read -p "Enter PHP version (8.0, 8.1, 8.2, 8.3, 8.4): " php_version
+fi
+
+# validates php
+if ! validate_php_version "$php_version"; then
+  echo "❌ Invalid PHP version. Allowed: 8.2, 8.3, 8.4."
   exit 1
 fi
+
+
+# Compatible php with moodle.
+if ! validate_compatibility "$moodle_version" "$php_version"; then
+  echo "❌ Invalid combination: Moodle $moodle_version does not support PHP $php_version."
+  exit 1
+fi
+# DB type
+if [[ ! "$db_type" =~ ^(mariadb|mysql|postgres)$ ]]; then
+  echo "❌ $db_type database type is not supported by ddev. Allowed: mariadb, mysql, postgres"
+  exit 1
+fi
+
+
+# Map db_type to DDEV database option
+case "$db_type" in
+  mariadb) ddev_db="mariadb:10.6" ;;
+  mysql) ddev_db="mysql:8.0" ;;
+  postgres) ddev_db="postgres:15" ;;
+esac
+
 
 # Set the project name
 project_name="moodle${moodle_version}-php${php_version}-db${db_type}"
@@ -169,8 +202,6 @@ if [[ -d "$project_dir" && "$force" != true ]]; then
 fi
 
 
-
-
 rm -rf "$project_dir"
 mkdir "$project_dir"
 cd "$project_dir" || exit
@@ -181,16 +212,14 @@ chmod -R 777 moodledata
 # -------------------------------
 # ✅ DDEV Config
 # -------------------------------
+
 if is_moodle_version_5_1_or_higher "$moodle_version"; then
-  ddev config --composer-root='./moodle' --docroot='./moodle/public' --webserver-type=apache-fpm
+  ddev config --composer-root='./moodle' --docroot='./moodle/public' --webserver-type=apache-fpm --php-version="$php_version" --database="$ddev_db"
 else
-  ddev config --composer-root='./moodle' --docroot='./moodle' --webserver-type=apache-fpm
+  ddev config --composer-root='./moodle' --docroot='./moodle' --webserver-type=apache-fpm --php-version="$php_version" --database="$ddev_db"
 fi
 
-# Update PHP version in config
-sed -i "s/php_version:.*/php_version: $php_version/" .ddev/config.yaml
-# Start DDEV
-ddev start
+ddev restart
 
 # -------------------------------
 # ✅ Composer Install
@@ -212,7 +241,6 @@ if ! ddev exec php ./moodle/admin/cli/install.php \
   --non-interactive \
   --agree-license \
   --wwwroot="$wwwroot" \
-  --dbtype=mariadb \
   --dbtype="$db_type" \
   --dbhost=db \
   --dbname=db \

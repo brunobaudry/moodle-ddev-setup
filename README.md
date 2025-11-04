@@ -8,21 +8,23 @@ bash script to install moodle instances using ddev for development. (without the
 - Start developping and testing happily
 
 ## Install directories
+
 The installs will create the projects main folder with the moodle, the php and the db versions in the name.
 
-├── moodle4.3.2-php8.2-mariadb
-│   ├── moodle
-│   └── moodledata
-├── moodle405-php8.4-postgres
-│   ├── moodle
-│   └── moodledata
+├── moodle4.3.2-php8.2-mariadb  
+│   ├── moodle  
+│   └── moodledata  
+├── moodle405-php8.4-postgres  
+│   ├── moodle  
+│   └── moodledata  
 
 ## 5.1 structure
-├── moodle501-php8.4-mysql
-│   ├── moodle
-│   |    ├── ...
-│   |    └── public
-│   └── moodledata
+
+├── moodle501-php8.4-mysql  
+│   ├── moodle  
+│   |    ├── ...  
+│   |    └── public  
+│   └── moodledata  
 
 ## Setup
 
