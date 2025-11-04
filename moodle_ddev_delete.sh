@@ -10,7 +10,7 @@ TARGET_DIR="$1"
 
 # Check if the folder exists
 if [ ! -d "$TARGET_DIR" ]; then
-  echo "Error: Folder '$TARGET_DIR' does not exist."
+  echo "❌ Error: Folder '$TARGET_DIR' does not exist."
   exit 1
 fi
 
@@ -34,4 +34,4 @@ cd ..
 echo "Deleting folder $TARGET_DIR..."
 rm -rf "$TARGET_DIR"
 
-echo "Cleanup completed successfully."
+echo "✅ Cleanup completed successfully."

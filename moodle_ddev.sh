@@ -36,22 +36,43 @@ check_environment() {
 # -------------------------------
 validate_php_version() {
   case "$1" in
-    8.0|8.1|8.2|8.3|8.4) return 0 ;;
+    7.4|8.0|8.1|8.2|8.3|8.4) return 0 ;;
     *) return 1 ;;
   esac
 }
 
 validate_compatibility() {
-  local moodle="$1"
+  local input="$1"
   local php="$2"
+  local moodle=""
 
-  if [[ "$moodle" =~ ^401|402$ ]]; then
-    [[ "$php" == "8.0" || "$php" == "8.1" ]] && return 0
-  elif [[ "$moodle" =~ ^403|404|405$ ]]; then
-    [[ "$php" == "8.0" || "$php" == "8.1" || "$php" == "8.2" ]] && return 0
-  elif [[ "$moodle" =~ ^500|501$ ]]; then
-    [[ "$php" == "8.2" || "$php" == "8.3" ]] && return 0
+  # Normalize Moodle version
+  if [[ "$input" =~ ^MOODLE_([0-9]{3})_STABLE$ ]]; then
+    moodle="${BASH_REMATCH[1]}"
+  elif [[ "$input" =~ ^([0-9]+)\.([0-9]+)(\.[0-9]+)?$ ]]; then
+    # Convert semantic version: major.minor → major*100 + minor
+    moodle="$(( ${BASH_REMATCH[1]} * 100 + ${BASH_REMATCH[2]} ))"
+  elif [[ "$input" =~ ^[0-9]{3}$ ]]; then
+    moodle="$input"
+  else
+    return 1  # Invalid format
   fi
+
+  # Compatibility checks
+  case "$moodle" in
+    401)
+      [[ "$php" =~ ^(7\.4|8\.0|8\.1)$ ]] && return 0
+      ;;
+    402|403)
+      [[ "$php" =~ ^(8\.0|8\.1|8\.2)$ ]] && return 0
+      ;;
+    404|405)
+      [[ "$php" =~ ^(8\.1|8\.2|8\.3)$ ]] && return 0
+      ;;
+    500|501)
+      [[ "$php" =~ ^(8\.2|8\.3|8\.4)$ ]] && return 0
+      ;;
+  esac
 
   return 1
 }
@@ -66,6 +87,13 @@ validate_moodle_version() {
   else
     return 1
   fi
+}
+
+validate_db(){
+  case "$1" in
+    mariadb|mysqli|pgsql) return 0 ;;
+    *) return 1 ;;
+  esac
 }
 
 get_moodle_package() {
@@ -100,6 +128,8 @@ cleanup_failed_install() {
   ddev delete --omit-snapshot
   rm -rf moodle moodledata .ddev
   docker builder prune
+  cd ..
+  rm -rf "$1"
 }
 
 # -------------------------------
@@ -108,8 +138,8 @@ cleanup_failed_install() {
 php_version=""
 moodle_version=""
 force=false
-root_folder="."  # You can change this to any desired root path
-db_type="mariadb"  # default
+root_folder=""  # You can change this to any desired root path
+db_type=""  # default mariadb
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -152,16 +182,16 @@ check_environment
 # Interactive fallback
 
 if [[ -z "$moodle_version" ]]; then
-  read -p "Enter Moodle version (e.g. 401 or 5.1.0): " moodle_version
+  read -p "Enter Moodle version (e.g. 401~501 or 4.x.x/5.x.x): " moodle_version
 fi
 
 if ! validate_moodle_version "$moodle_version"; then
-  echo "❌ Invalid Moodle version. Allowed: 401–501 or 4.x.x/5.x.x."
+  echo "❌ Invalid Moodle version. Allowed: 401~501 or 4.x.x/5.x.x."
   exit 1
 fi
 
 if [[ -z "$php_version" ]]; then
-  read -p "Enter PHP version (8.0, 8.1, 8.2, 8.3, 8.4): " php_version
+  read -p "Enter the PHP version (7.4, 8.0, 8.1, 8.2, 8.3, 8.4): " php_version
 fi
 
 # validates php
@@ -176,23 +206,36 @@ if ! validate_compatibility "$moodle_version" "$php_version"; then
   echo "❌ Invalid combination: Moodle $moodle_version does not support PHP $php_version."
   exit 1
 fi
+
+if [[ -z "$db_type" ]]; then
+  read -p "Enter DB type mariadb, mysqli or pgsql) Default (mariadb) " db_type
+fi
+if [[ -z "$db_type" ]]; then
+  db_type="mariadb"
+fi
 # DB type
-if [[ ! "$db_type" =~ ^(mariadb|mysql|postgres)$ ]]; then
-  echo "❌ $db_type database type is not supported by ddev. Allowed: mariadb, mysql, postgres"
+if ! validate_db "$db_type"; then
+  echo "❌ $db_type database type is not supported by ddev. Allowed: mariadb, mysqli, pgsql"
   exit 1
 fi
 
+if [[ -z "$root_folder" ]]; then
+  read -p "Enter the path where you it installed. Default to local (.) " root_folder
+fi
+if [[ -z "$root_folder" ]]; then
+  root_folder="."
+fi
 
 # Map db_type to DDEV database option
 case "$db_type" in
-  mariadb) ddev_db="mariadb:10.6" ;;
-  mysql) ddev_db="mysql:8.0" ;;
-  postgres) ddev_db="postgres:15" ;;
+  mariadb) ddev_db="mariadb:10.11" ;;
+  mysqli) ddev_db="mysql:8.0" ;;
+  pgsql) ddev_db="postgres:15" ;;
 esac
 
 
 # Set the project name
-project_name="moodle${moodle_version}-php${php_version}-db${db_type}"
+project_name="moodle${moodle_version}-php${php_version}-${db_type}"
 # Build full project path
 project_dir="${root_folder}/${project_name}"
 
@@ -215,11 +258,12 @@ chmod -R 777 moodledata
 
 if is_moodle_version_5_1_or_higher "$moodle_version"; then
   ddev config --composer-root='./moodle' --docroot='./moodle/public' --webserver-type=apache-fpm --php-version="$php_version" --database="$ddev_db"
+  rm -rf ./moodle/public # hack as ddev will create it but composer will complain...
 else
   ddev config --composer-root='./moodle' --docroot='./moodle' --webserver-type=apache-fpm --php-version="$php_version" --database="$ddev_db"
 fi
 
-ddev restart
+ddev start
 
 # -------------------------------
 # ✅ Composer Install
@@ -228,7 +272,7 @@ moodle_package=$(get_moodle_package "$moodle_version")
 
 if ! ddev composer create-project "$moodle_package"; then
   echo "❌ Composer project creation failed. Version may not exist."
-  cleanup_failed_install
+  cleanup_failed_install $project_dir
   exit 1
 fi
 
@@ -250,7 +294,7 @@ if ! ddev exec php ./moodle/admin/cli/install.php \
   --shortname="${moodle_version}-${php_version}-${db_type}" \
   --adminpass=1234; then
   echo "❌ Moodle CLI installation failed."
-  cleanup_failed_install
+  cleanup_failed_install $project_dir
   exit 1
 fi
 

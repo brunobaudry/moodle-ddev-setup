@@ -46,18 +46,36 @@ Then you'll be prompted to enter the php version and the moodle version.
 **php** allowed versions are 8.2, 8.3 and 8.4 so far
 **Moolde** allowed from 4.1 onwards. You can pass it in the "stable" format (expl 401) or with the full version 4.1.0 format.
 
-### passing all the params 
+### Params
+
+--version (moodle version in 'stable' or 'minor' format. 4.1, 401, 4.2.1 etc. ).  
+--php (php version from 8.0 to 8.4).  
+--db (mariadb|mysqli|pgsql). OPTIONAL, defaults to mariadb.  
+--root OPTIONAL, If not passed than the script will do the install at the same level.  
+--force Use this if you want to override an existing installation. OPTIONAL.  
+
 ```bash
 ./moodle_ddev.sh --php <version> --version <moodle_version> [--db <mariadb|mysql|postgres>] [--force] [--root <folder>]
 ```
+
 Expl :
-```bash
+
+```
 ./moodle_ddev.sh --php 8.4 --version 501
 ```
 
 ```bash
 ./moodle_ddev.sh --php 8.4 --version 501 --db postgres --root ~/dev/moodles
 ```
+
+#### interactive mode
+```bash
+./moodle_ddev.sh
+```
+Then you'll be prompted to enter the php version and the moodle version.
+
+**php** allowed versions are 8.2, 8.3 and 8.4 so far
+**Moolde** allowed from 4.1 onwards. You can pass it in the "stable" format (expl 401) or with the full version 4.1.0 format.
 
 ### --force
 pass this when you want to overrite an install.
