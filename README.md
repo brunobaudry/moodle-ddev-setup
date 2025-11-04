@@ -90,3 +90,22 @@ https://jqlang.org/
 - add plugins
 - add behat and phpunit setup
 - add mounts
+
+## Delete
+use the moodle_ddev_delete.sh to remove an instal cleany.
+
+```
+moodle_ddev_delete.sh <main_folder_path>
+```
+
+Expl:
+```
+├── moodle501-php8.4-mysql
+│   ├── moodle
+│   |    ├── ...
+│   |    └── public
+│   └── moodledata
+
+moodle_ddev_delete.sh /PATH_TO_THE_FOLDER/moodle501-php8.4-mysql
+
+```
