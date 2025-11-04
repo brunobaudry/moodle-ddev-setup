@@ -125,7 +125,7 @@ is_moodle_version_5_1_or_higher() {
 
 cleanup_failed_install() {
   echo "🧹 Cleaning up failed install..."
-  ddev delete --omit-snapshot
+  ddev delete --omit-snapshot -y >/dev/null 2>&1
   rm -rf moodle moodledata .ddev
   docker builder prune
   cd ..

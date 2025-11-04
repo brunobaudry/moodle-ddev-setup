@@ -19,7 +19,7 @@ cd "$TARGET_DIR" || { echo "Failed to enter $TARGET_DIR"; exit 1; }
 
 # Perform DDEV delete without snapshot
 echo "Deleting DDEV project..."
-ddev delete --omit-snapshot
+ddev delete --omit-snapshot -y >/dev/null 2>&1
 
 # Remove Moodle-related directories
 echo "Removing moodle, moodledata, and .ddev directories..."
