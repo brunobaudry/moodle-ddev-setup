@@ -34,9 +34,10 @@ check_environment() {
 # -------------------------------
 # ✅ Validation Functions
 # -------------------------------
+DEFAULT_PHP=8.4
 validate_php_version() {
   case "$1" in
-    7.4|8.0|8.1|8.2|8.3|8.4) return 0 ;;
+    7.4|8.0|8.1|8.2|8.3|"$DEFAULT_PHP") return 0 ;;
     *) return 1 ;;
   esac
 }
@@ -76,11 +77,11 @@ validate_compatibility() {
 
   return 1
 }
-
+DEFAULT_MOODLE=501
 validate_moodle_version() {
   local version="$1"
 
-  if [[ "$version" =~ ^(401|402|403|404|405|500|501)$ ]]; then
+  if [[ "$version" =~ ^(401|402|403|404|405|500|$DEFAULT_MOODLE)$ ]]; then
     return 0
   elif [[ "$version" =~ ^(4\.[0-5]\.[0-9]+|5\.0\.[0-9]+|5\.1\.[0-9]+)$ ]]; then
     return 0
@@ -88,10 +89,10 @@ validate_moodle_version() {
     return 1
   fi
 }
-
+DEFAULT_DB=mariadb
 validate_db(){
   case "$1" in
-    mariadb|mysqli|pgsql) return 0 ;;
+    "$DEFAULT_DB"|mysqli|pgsql) return 0 ;;
     *) return 1 ;;
   esac
 }
@@ -182,7 +183,11 @@ check_environment
 # Interactive fallback
 
 if [[ -z "$moodle_version" ]]; then
-  read -p "Enter Moodle version (e.g. 401~501 or 4.x.x/5.x.x): " moodle_version
+  moodle_version=$DEFAULT_MOODLE
+  read -p "Enter Moodle version. e.g. 401~501 or 4.x.x/5.x.x: ($DEFAULT_MOODLE)" moodle_version
+fi
+if [[ -z "$moodle_version" ]]; then
+  moodle_version=$DEFAULT_MOODLE
 fi
 
 if ! validate_moodle_version "$moodle_version"; then
@@ -191,7 +196,10 @@ if ! validate_moodle_version "$moodle_version"; then
 fi
 
 if [[ -z "$php_version" ]]; then
-  read -p "Enter the PHP version (7.4, 8.0, 8.1, 8.2, 8.3, 8.4): " php_version
+  read -p "Enter the PHP version 7.4, 8.0, 8.1, 8.2, 8.3 or 8.4: ($DEFAULT_PHP)" php_version
+fi
+if [[ -z "$php_version" ]]; then
+  php_version=$DEFAULT_PHP
 fi
 
 # validates php
@@ -211,7 +219,7 @@ if [[ -z "$db_type" ]]; then
   read -p "Enter DB type mariadb, mysqli or pgsql) Default (mariadb) " db_type
 fi
 if [[ -z "$db_type" ]]; then
-  db_type="mariadb"
+  db_type=$DEFAULT_DB
 fi
 # DB type
 if ! validate_db "$db_type"; then
@@ -223,7 +231,7 @@ if [[ -z "$root_folder" ]]; then
   read -p "Enter the path where you it installed. Default to local (.) " root_folder
 fi
 if [[ -z "$root_folder" ]]; then
-  root_folder="."
+  root_folder="$(realpath "${MOODLE_DDEVS_DIR:-.}")" # If MOODLE_DDEVS_DIR is set and not empty use it else use local .
 fi
 
 # Map db_type to DDEV database option

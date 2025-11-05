@@ -23,25 +23,34 @@ validate_compatibility() {
 
   return 1
 }
-root_folder="."
+root_folder="$(realpath "${MOODLE_DDEVS_DIR:-.}")" # If MOODLE_DDEVS_DIR is set and not empty use it else use local .
+
+
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --force)
       force=true
       shift
       ;;
-    --root)
-      root_folder="$2"
-      shift 2
-      ;;
     *)
       echo "❌ Unknown option: $1"
-      echo "Usage: $0 [--force] [--root <folder>]"
+      echo "Usage: $0 [--root <folder>]"
       exit 1
       ;;
   esac
 done
 
+if [ ! -d "$root_folder" ]; then
+  echo "❌ Error: Folder '$root_folder' does not exist."
+  exit 1
+fi
+
+
+read -p "Ok to DELETE ALL ddev installs in '$root_folder'? (y|n) " ok_to_go
+if [[ ! "$ok_to_go" != "y" ]]; then
+  echo "Ciao then..."
+  exit 1
+fi
 # Iterate over all combinations
 for moodle in "${MOODLE_VERSIONS[@]}"; do
   for php in "${PHP_VERSIONS[@]}"; do

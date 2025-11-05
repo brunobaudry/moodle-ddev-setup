@@ -10,6 +10,13 @@ TARGET_DIR="$1"
 
 # Check if the folder exists
 if [ ! -d "$TARGET_DIR" ]; then
+  # if not try first to see if MOODLE_DDEVS_DIR env is set
+  ROOT_DIR="$(realpath "${MOODLE_DDEVS_DIR:-.}")" # If MOODLE_DDEVS_DIR is set and not empty use it else use local .
+  if [ ! -d "$ROOT_DIR" ]; then
+    TARGET_DIR="$ROOT_DIR/$TARGET_DIR" #
+  fi
+fi
+if [ ! -d "$TARGET_DIR" ]; then
   echo "❌ Error: Folder '$TARGET_DIR' does not exist."
   exit 1
 fi
