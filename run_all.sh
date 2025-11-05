@@ -110,12 +110,12 @@ for moodle in "${MOODLE_VERSIONS[@]}"; do
      
     if validate_compatibility "$moodle" "$php"; then
       for db in "${DB_TYPES[@]}"; do
-        echo "Running: ./moodle_ddev.sh --php $php --version $moodle --db $db  --root $root_folder"
+        echo "🏃🏻‍➡️ Running: ./moodle_ddev.sh --php $php --version $moodle --db $db  --root $root_folder"
         if $force; then 
           ./moodle_ddev.sh --php "$php" --version "$moodle" --db "$db" --force --root "$root_folder"
 
           if [[ $? -eq 1 ]]; then
-                  echo "Subscript exited with status 1. Breaking loop."
+                  echo "✋ Subscript exited with status 1. Breaking loop."
                   break
           fi
 
@@ -123,14 +123,15 @@ for moodle in "${MOODLE_VERSIONS[@]}"; do
           ./moodle_ddev.sh --php "$php" --version "$moodle" --db "$db" --root "$root_folder"
 
           if [[ $? -eq 1 ]]; then
-                  echo "Subscript exited with status 1. Breaking loop."
+                  echo "✋ Subscript exited with status 1. Breaking loop."
                   break
           fi
 
         fi
       done
     else
-      echo "Skipping incompatible combo: Moodle $moodle with PHP $php"
+      echo "⚠↪ Skipping incompatible combo: Moodle $moodle with PHP $php "
     fi
   done
 done
+./ddev_describe.sh --root "$root_folder"
