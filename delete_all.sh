@@ -28,9 +28,9 @@ root_folder="$(realpath "${MOODLE_DDEVS_DIR:-.}")" # If MOODLE_DDEVS_DIR is set 
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    --force)
-      force=true
-      shift
+      --root)
+      root_folder="$2"
+      shift 2
       ;;
     *)
       echo "❌ Unknown option: $1"

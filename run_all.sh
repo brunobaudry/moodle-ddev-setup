@@ -44,27 +44,27 @@ root_folder="$(realpath "${MOODLE_DDEVS_DIR:-.}")" # If MOODLE_DDEVS_DIR is set 
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --moodle)
-      shift
+      shift 2
       MOODLE_VERSIONS=($1) # space-separated
       ;;
     --php)
-      shift
+      shift 2
       PHP_VERSIONS=($1) # space-separated
       ;;
     --db)
-      shift
+      shift 2
       DB_TYPES=($1) # space-separated
       ;;
     --moodle-csv)
-      shift
+      shift 2
       IFS=',' read -r -a MOODLE_VERSIONS <<< "$1" # comma-separated
       ;;
     --php-csv)
-      shift
+      shift 2
       IFS=',' read -r -a PHP_VERSIONS <<< "$1" # comma-separated
       ;;
     --db-csv)
-      shift
+      shift 2
       IFS=',' read -r -a DB_TYPES <<< "$1" # comma-separated
       ;;
 
