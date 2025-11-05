@@ -47,7 +47,7 @@ fi
 
 
 read -p "Ok to DELETE ALL ddev installs in '$root_folder'? (y|n) " ok_to_go
-if [[ ! "$ok_to_go" != "y" ]]; then
+if [[ "$ok_to_go" != "y" ]]; then
   echo "Ciao then..."
   exit 1
 fi

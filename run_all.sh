@@ -42,52 +42,49 @@ show_help(){
 root_folder="$(realpath "${MOODLE_DDEVS_DIR:-.}")" # If MOODLE_DDEVS_DIR is set and not empty use it else use local .
 
 while [[ $# -gt 0 ]]; do
-  case "$1" in
-    --moodle)
-      shift 2
-      MOODLE_VERSIONS=($1) # space-separated
-      ;;
-    --php)
-      shift 2
-      PHP_VERSIONS=($1) # space-separated
-      ;;
-    --db)
-      shift 2
-      DB_TYPES=($1) # space-separated
-      ;;
-    --moodle-csv)
-      shift 2
-      IFS=',' read -r -a MOODLE_VERSIONS <<< "$1" # comma-separated
-      ;;
-    --php-csv)
-      shift 2
-      IFS=',' read -r -a PHP_VERSIONS <<< "$1" # comma-separated
-      ;;
-    --db-csv)
-      shift 2
-      IFS=',' read -r -a DB_TYPES <<< "$1" # comma-separated
-      ;;
-
-    --force)
-      force=true
-      shift
-      ;;
-    --root)
-      root_folder="$2"
-      shift 2
-      ;;
-    --help)
-     show_help
-      ;;
-    *)
-      echo "❌ Unknown option: $1"
-      show_help
-      ;;
-  esac
+    case "$1" in
+        --moodle)
+            MOODLE_VERSIONS=($2) # space-separated
+            shift 2
+            ;;
+        --php)
+            PHP_VERSIONS=($2) # space-separated
+            shift 2
+            ;;
+        --db)
+            DB_TYPES=($2) # space-separated
+            shift 2
+            ;;
+        --moodle-csv)
+            IFS=',' read -r -a MOODLE_VERSIONS <<< "$2" # comma-separated
+            shift 2
+            ;;
+        --php-csv)
+            IFS=',' read -r -a PHP_VERSIONS <<< "$2" # comma-separated
+            shift 2
+            ;;
+        --db-csv)
+            IFS=',' read -r -a DB_TYPES <<< "$2" # comma-separated
+            shift 2
+            ;;
+        --force)
+            force=true
+            shift
+            ;;
+        --root)
+            root_folder="$2"
+            shift 2
+            ;;
+        --help)
+            show_help
+            ;;
+        *)
+            echo "❌ Unknown option: $1"
+            show_help
+            ;;
+    esac
 done
 
-echo "$MOODLE_DDEVS_DIR"
-echo "$MOODLE_DIR"
 
 if [ ! -d "$root_folder" ]; then
   echo "❌ Error: Folder '$root_folder' does not exist."
@@ -95,12 +92,13 @@ if [ ! -d "$root_folder" ]; then
 fi
 
 total_combinations=$(( ${#MOODLE_VERSIONS[@]} * ${#PHP_VERSIONS[@]} * ${#DB_TYPES[@]} ))
+# "$(IFS=,; echo "${PHP_VERSIONS[*]}")"
+STR_MOODLES="$(IFS=,; echo "${MOODLE_VERSIONS[*]}")"
+STR_PHPS="$(IFS=,; echo "${PHP_VERSIONS[*]}")"
+STR_DBS="$(IFS=,; echo "${DB_TYPES[*]}")"
+read -p "Ok to install all $total_combinations combinaisons of MOODLEs $STR_MOODLES with PHPs $STR_PHPS and DBs $STR_DBS in '$root_folder'? (y|n) " ok_to_go
 
-
-
-read -p "Ok to install all $total_combinations combinaisons of (Moodle ${MOODLE_VERSIONS[*]} with PHP ${PHP_VERSIONS[*]} and DB ${DB_TYPES[*]}) in '$root_folder'? (y|n) " ok_to_go
-
-if [[ ! "$ok_to_go" != "y" ]]; then
+if [[ "$ok_to_go" != "y" ]]; then
   echo "Ciao then..."
   exit 1
 fi
@@ -115,8 +113,20 @@ for moodle in "${MOODLE_VERSIONS[@]}"; do
         echo "Running: ./moodle_ddev.sh --php $php --version $moodle --db $db  --root $root_folder"
         if $force; then 
           ./moodle_ddev.sh --php "$php" --version "$moodle" --db "$db" --force --root "$root_folder"
+
+          if [[ $? -eq 1 ]]; then
+                  echo "Subscript exited with status 1. Breaking loop."
+                  break
+          fi
+
         else
           ./moodle_ddev.sh --php "$php" --version "$moodle" --db "$db" --root "$root_folder"
+
+          if [[ $? -eq 1 ]]; then
+                  echo "Subscript exited with status 1. Breaking loop."
+                  break
+          fi
+
         fi
       done
     else
