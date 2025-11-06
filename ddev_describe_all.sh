@@ -31,7 +31,7 @@ for dir in "$root_folder"/*; do
         
         # Get DDEV info in JSON format
         INFO=$(ddev describe -j)
-         echo "$INFO" | jq .
+        #  echo "$INFO" | jq .
         
         WEB_HOST=$(echo "$INFO" | jq -r '.raw.services.web.https_url')
         DB_PORT=$(echo "$INFO" | jq -r '.raw.services.db.host_ports')

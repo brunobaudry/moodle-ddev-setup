@@ -20,6 +20,40 @@ Run several install in batch by passing a list of moodles, phps or dbs.
 __delete_all.sh__
 Remove all installs in batch.
 
+__ddev_describe_all.sh__
+Run this to batch get all the ddev urls of project lying in a folder.
+
+Expl :
+
+```
+===== ALL DDEVs in /Users/pikachu/Documents/dev/_dockers/moodles =====
+moodle405-php8.2-mariadb 
+    https://moodle405-php8.2-mariadb.ddev.site ← Web
+    127.0.0.1:33131 ← Database
+    https://moodle405-php8.2-mariadb.ddev.site:8026 ← Mailpit
+--------
+moodle500-php8.4-mariadb 
+    https://moodle500-php8.4-mariadb.ddev.site ← Web
+    127.0.0.1:33130 ← Database
+    https://moodle500-php8.4-mariadb.ddev.site:8026 ← Mailpit
+--------
+moodle501-php8.4-mariadb 
+    https://moodle501-php8.4-mariadb.ddev.site ← Web
+    127.0.0.1:33121 ← Database
+    https://moodle501-php8.4-mariadb.ddev.site:8026 ← Mailpit
+--------
+moodle501-php8.4-pgsql 
+    https://moodle501-php8.4-pgsql.ddev.site ← Web
+    127.0.0.1:33125 ← Database
+    https://moodle501-php8.4-pgsql.ddev.site:8026 ← Mailpit
+--------
+```
+
+To get more detail info, navigate in each folder and do
+```
+ddev describe
+```
+
 ## Dependencies
 
 ### DDEV v1.21+
@@ -71,7 +105,8 @@ langlist,"de,fr,en"
 ```
 
 You can use any name found in the admin (unless from a additinal plugin)
-![](expl001.png)
+
+![](pix/expl001.png)
 
 __--force__ Use this if you want to override an existing installation. OPTIONAL.  
 
@@ -117,6 +152,15 @@ The projects main folder will be named with the moodle, the php and the db versi
 │   |    └── public
 │   └── moodledata
 ```
+
+### Output
+When the script finishes, it will output an abstrct of the "ddev describe"
+
+Expl:
+✅ Moodle 405 with PHP 8.2 setup completed using DDEV.
+🔗 Admin site: https://moodle405-php8.2-mariadb.ddev.site
+📧 Mailpit site: https://moodle405-php8.2-mariadb.ddev.site:8026
+🔐 Admin password: 1234
 
 ## run_all.sh
 
