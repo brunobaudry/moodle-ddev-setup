@@ -54,11 +54,11 @@ fi
 # Iterate over all combinations
 for moodle in "${MOODLE_VERSIONS[@]}"; do
   for php in "${PHP_VERSIONS[@]}"; do
-     
     if validate_compatibility "$moodle" "$php"; then
       for db in "${DB_TYPES[@]}"; do
-        echo "Running: ./moodle_ddev_delete.sh --php $php --version $moodle --db $db"
-        ./moodle_ddev_delete.sh "moodle$moodle-php$php-$db"
+        project_name="moodle${moodle}-php${php}-${db}"
+        echo "Running: ./moodle_ddev_delete.sh $project_name --silent"
+        ./moodle_ddev_delete.sh $project_name --silent
       done
     else
       echo "Skipping incompatible combo: Moodle $moodle with PHP $php"

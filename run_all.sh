@@ -67,6 +67,10 @@ while [[ $# -gt 0 ]]; do
             IFS=',' read -r -a DB_TYPES <<< "$2" # comma-separated
             shift 2
             ;;
+        --admincfg-csv)
+            csv_admin_cfg="$2"
+            shift 2
+            ;;    
         --force)
             force=true
             shift
@@ -112,7 +116,7 @@ for moodle in "${MOODLE_VERSIONS[@]}"; do
       for db in "${DB_TYPES[@]}"; do
         echo "🏃🏻‍➡️ Running: ./moodle_ddev.sh --php $php --version $moodle --db $db  --root $root_folder"
         if $force; then 
-          ./moodle_ddev.sh --php "$php" --version "$moodle" --db "$db" --force --root "$root_folder"
+          ./moodle_ddev.sh --php "$php" --version "$moodle" --db "$db" --force --root "$root_folder" --admincfg-csv $csv_admin_cfg
 
           if [[ $? -eq 1 ]]; then
                   echo "✋ Subscript exited with status 1. Breaking loop."
@@ -120,7 +124,7 @@ for moodle in "${MOODLE_VERSIONS[@]}"; do
           fi
 
         else
-          ./moodle_ddev.sh --php "$php" --version "$moodle" --db "$db" --root "$root_folder"
+          ./moodle_ddev.sh --php "$php" --version "$moodle" --db "$db" --root "$root_folder" --admincfg-csv $csv_admin_cfg
 
           if [[ $? -eq 1 ]]; then
                   echo "✋ Subscript exited with status 1. Breaking loop."

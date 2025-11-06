@@ -22,7 +22,7 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-echo "----- ALL DDEVs in $root_folder ------"
+echo "===== ALL DDEVs in $root_folder ====="
 
 for dir in "$root_folder"/*; do
     if [ -d "$dir/.ddev" ]; then
@@ -31,16 +31,18 @@ for dir in "$root_folder"/*; do
         
         # Get DDEV info in JSON format
         INFO=$(ddev describe -j)
-        # echo "$INFO" | jq .
+         echo "$INFO" | jq .
         
         WEB_HOST=$(echo "$INFO" | jq -r '.raw.services.web.https_url')
         DB_PORT=$(echo "$INFO" | jq -r '.raw.services.db.host_ports')
+        mailpiturl=$(echo "$INFO" | jq -r '.raw.mailpit_https_url')
         
         DB="127.0.0.1:${DB_PORT}"
         
         echo "$PROJECT_NAME 
-    WEB $WEB_HOST 
-    DB $DB
+    $WEB_HOST ← Web
+    $DB ← Database
+    $mailpiturl ← Mailpit
 --------"
     fi
 done

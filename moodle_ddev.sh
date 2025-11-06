@@ -136,10 +136,13 @@ cleanup_failed_install() {
 # -------------------------------
 # ✅ Argument Parsing
 # -------------------------------
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+csv_admin_cfg=""
 php_version=""
 moodle_version=""
 force=false
-root_folder=""  # You can change this to any desired root path
+root_folder="${MOODLE_DDEVS_DIR:-.}"
+root_folder_is_default=true
 db_type=""  # default mariadb
 
 while [[ $# -gt 0 ]]; do
@@ -156,17 +159,22 @@ while [[ $# -gt 0 ]]; do
       db_type="$2"
       shift 2
       ;;
+    --admincfg-csv)
+      csv_admin_cfg="$2"
+      shift 2
+      ;;
     --force)
       force=true
       shift
       ;;
     --root)
       root_folder="$2"
+      root_folder_is_default=false
       shift 2
       ;;
     *)
       echo "❌ Unknown option: $1"
-      echo "Usage: $0 --php <version> --version <moodle_version> [--db <mariadb|mysql|postgres>] [--force] [--root <folder>]"
+      echo "Usage: $0 --php <version> --version <moodle_version> [--db <mariadb|mysql|postgres>] [--force] [--root <folder>] [--admincfg-csv <path_to_csv>]"
       exit 1
       ;;
   esac
@@ -184,7 +192,7 @@ check_environment
 
 if [[ -z "$moodle_version" ]]; then
   moodle_version=$DEFAULT_MOODLE
-  read -p "Enter Moodle version. e.g. 401~501 or 4.x.x/5.x.x: ($DEFAULT_MOODLE)" moodle_version
+  read -p "Enter Moodle version. e.g. 401~501 or 4.x.x/5.x.x: ($DEFAULT_MOODLE) " moodle_version
 fi
 if [[ -z "$moodle_version" ]]; then
   moodle_version=$DEFAULT_MOODLE
@@ -196,7 +204,7 @@ if ! validate_moodle_version "$moodle_version"; then
 fi
 
 if [[ -z "$php_version" ]]; then
-  read -p "Enter the PHP version 7.4, 8.0, 8.1, 8.2, 8.3 or 8.4: ($DEFAULT_PHP)" php_version
+  read -p "Enter the PHP version 7.4, 8.0, 8.1, 8.2, 8.3 or 8.4: ($DEFAULT_PHP) " php_version
 fi
 if [[ -z "$php_version" ]]; then
   php_version=$DEFAULT_PHP
@@ -227,11 +235,15 @@ if ! validate_db "$db_type"; then
   exit 1
 fi
 
-if [[ -z "$root_folder" ]]; then
-  read -p "Enter the path where you it installed. Default to local (.) " root_folder
+if [ "$root_folder_is_default"=true ]; then
+  read -e -p "Enter the path where you it installed. Default to local ($root_folder) " root_f
 fi
-if [[ -z "$root_folder" ]]; then
-  root_folder="$(realpath "${MOODLE_DDEVS_DIR:-.}")" # If MOODLE_DDEVS_DIR is set and not empty use it else use local .
+# if the user gave a folder else use default
+if [[ -n "$root_f" ]]; then
+  root_folder="$(realpath $root_folder)" 
+fi
+if [[ -z "$csv_admin_cfg" ]]; then
+  read -e -p "Enter the path (relative to the script '$SCRIPT_DIR') of a NAME,VALUE csv file for admin config (leave empty if none) " csv_admin_cfg
 fi
 
 # Map db_type to DDEV database option
@@ -265,10 +277,10 @@ chmod -R 777 moodledata
 # -------------------------------
 
 if is_moodle_version_5_1_or_higher "$moodle_version"; then
-  ddev config --composer-root='./moodle' --docroot='./moodle/public' --webserver-type=apache-fpm --php-version="$php_version" --database="$ddev_db"
+  ddev config --composer-root='./moodle' --docroot='./moodle/public' --webserver-type=apache-fpm --disable-upload-dirs-warning --php-version="$php_version" --database="$ddev_db"
   rm -rf ./moodle/public # hack as ddev will create it but composer will complain...
 else
-  ddev config --composer-root='./moodle' --docroot='./moodle' --webserver-type=apache-fpm --php-version="$php_version" --database="$ddev_db"
+  ddev config --composer-root='./moodle' --docroot='./moodle' --webserver-type=apache-fpm --disable-upload-dirs-warning --php-version="$php_version" --database="$ddev_db"
 fi
 
 ddev start
@@ -287,7 +299,10 @@ fi
 # -------------------------------
 # ✅ Moodle CLI Install
 # -------------------------------
-wwwroot=$(ddev describe -j | jq -r '.raw.primary_url')
+INFO=$(ddev describe -j)
+wwwroot=$(echo "$INFO" | jq -r '.raw.primary_url')
+mailpiturl=$(echo "$INFO" | jq -r '.raw.mailpit_https_url')
+# DDEV_ROOT=$(echo "$INFO" | jq -r '.raw.approot')
 
 if ! ddev exec php ./moodle/admin/cli/install.php \
   --non-interactive \
@@ -300,11 +315,57 @@ if ! ddev exec php ./moodle/admin/cli/install.php \
   --dbpass=db \
   --fullname="$project_name" \
   --shortname="${moodle_version}-${php_version}-${db_type}" \
-  --adminpass=1234; then
+  --adminpass=1234 \
+  --adminemail="test@test.com"; then
   echo "❌ Moodle CLI installation failed."
-  cleanup_failed_install $project_dir
+  cleanup_failed_install "$project_dir"
   exit 1
 fi
+
+if ! ddev exec php ./moodle/admin/cli/cfg.php --name=smtphosts --set=localhost:1025; then
+  echo "⚠️ Moodle CLI failed to setup mailpit."
+fi
+
+# -------------------------------
+# ✅ Apply CSV Config
+# -------------------------------
+if [ -z "$csv_admin_cfg" ]; then
+    echo "No CSV file provided..."
+else
+    # Resolve csv_admin_cfg path
+    if [[ "$csv_admin_cfg" = /* ]]; then
+        # Absolute path
+        csv_admin_cfg="$(realpath "$csv_admin_cfg")"
+    elif [[ "$csv_admin_cfg" = ~* ]]; then
+        # Path relative to home
+        csv_admin_cfg="$(realpath "$HOME/${csv_admin_cfg:1}")"
+    else
+        # Relative to script directory
+        csv_admin_cfg="$(realpath "$SCRIPT_DIR/$csv_admin_cfg")"
+    fi
+    if [ -f "$csv_admin_cfg" ]; then
+        
+        while read -r line || [ -n "$line" ]; do
+            [[ "$line" == NAME,* ]] && continue
+
+            NAME=$(echo "$line" | awk -F',' '{print $1}' | sed 's/^"//;s/"$//')
+            VALUE=$(echo "$line" | awk -F',' '{for(i=2;i<=NF;i++) printf "%s%s",$i,(i<NF?",":"");}' | sed 's/^"//;s/"$//')
+
+            NAME=$(echo "$NAME" | xargs)
+            VALUE=$(echo "$VALUE" | xargs)
+
+            [[ -z "$NAME" || -z "$VALUE" ]] && continue
+
+            echo "Setting $NAME to $VALUE..."
+            if ! ddev exec php ./moodle/admin/cli/cfg.php --name="$NAME" --set="$VALUE" < /dev/null; then
+                echo "⚠️ CLI failed to setup '$NAME' with value '$VALUE'."
+            fi
+        done < "$csv_admin_cfg"
+    else
+        echo "❌ Error: Admin config CSV file not found: '$csv_admin_cfg'"
+    fi
+fi
+
 
 # -------------------------------
 # ✅ Success Message
@@ -312,4 +373,6 @@ fi
 echo ""
 echo "✅ Moodle $moodle_version with PHP $php_version setup completed using DDEV."
 echo "🔗 Admin site: $wwwroot"
+echo "📧 Mailpit site: $mailpiturl"
+
 echo "🔐 Admin password: 1234"

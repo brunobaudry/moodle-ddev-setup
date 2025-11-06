@@ -9,6 +9,7 @@ Install moodle instance with ddev for development.
 - choose your moodle version
 - choose your DB (mariadb|mysql|postgres)
 - choose the directory where you want it installed.
+- pass a CSV table with all the admin settings you want to set.
 - Start developping and testing in less than a minute using a clean moodle install ready under ddev generated url on your locahost.
 
 __moodle-ddev_delete.sh__ 
@@ -56,11 +57,23 @@ If you whish add a global MOODLE_DDEVS_DIR env variable with the main root folde
 
 ### Params
 
---version (moodle version in 'stable' or 'minor' format. 4.1, 401, 4.2.1 etc. ).  
---php (php version from 8.0 to 8.4).
---db (mariadb|mysqli|pgsql). OPTIONAL, defaults to mariadb.  
---root OPTIONAL, If not passed than the script will do the install in MOODLE_DDEVS_DIR env variable, if set else, at the same level the script is launched.  
---force Use this if you want to override an existing installation. OPTIONAL.  
+__--version__ (moodle version in 'stable' or 'minor' format. 4.1, 401, 4.2.1 etc. ).  
+__--php__ (php version from 8.0 to 8.4).
+__--db__ (mariadb|mysqli|pgsql). OPTIONAL, defaults to mariadb.  
+
+__--root__ OPTIONAL, If not passed than the script will do the install in MOODLE_DDEVS_DIR env variable, if set else, at the same level the script is launched.
+__--admincfg-csv__ OPTIONAL, You can pass a simple CSV file with all the admin config you'd like to be pre set. The file must have NAME,VALUE header,. Expl :
+```
+NAME,VALUE
+debug,30719
+cachejs,0
+langlist,"de,fr,en"
+```
+
+You can use any name found in the admin (unless from a additinal plugin)
+![](expl001.png)
+
+__--force__ Use this if you want to override an existing installation. OPTIONAL.  
 
 ```bash
 ./moodle_ddev.sh --php <version> --version <moodle_version> [--db <mariadb|mysql|postgres>] [--force] [--root <folder>]
