@@ -22,8 +22,6 @@ check_environment() {
 }
 # Usage: ./prune_moodle.sh <folder> [--silent]
 
-check_environment
-
 # Check if a folder was provided
 if [ -z "$1" ]; then
   echo "Usage: $0 <folder> [--silent]"
@@ -48,14 +46,21 @@ done
 target_folder="$(realpath "$TARGET_DIR" 2>/dev/null)"
 
 # If TARGET_DIR is not a valid folder, try with root_folder
-if [ ! -d "$target_folder" ]; then
+if [[ ! -d "$target_folder" ]]; then
     target_folder="$(realpath "${root_folder}/${TARGET_DIR}" 2>/dev/null)"
 fi
 
-if [ ! -d "$target_folder" ]; then
-  echo "❌ Error: Folder '$TARGET_DIR' does not exist."
+if [[ ! -d "$target_folder" &&  "$SILENT" = true ]]; then
+    echo "  $TARGET_DIR not installed skipping..."
+    exit 1
+fi
+
+if [ ! -d "$target_folder" &&  "$SILENT" = false]; then
+  echo "  ❌ Error: Folder '$TARGET_DIR' does not exist."
   exit 1
 fi
+
+check_environment
 
 # Confirmation logic
 if [ "$SILENT" = false ]; then
