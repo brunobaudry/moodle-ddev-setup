@@ -4,6 +4,8 @@
 MOODLE_VERSIONS=("401" "402" "403" "404" "405" "500" "501")
 PHP_VERSIONS=("7.4" "8.0" "8.1" "8.2" "8.3" "8.4")
 DB_TYPES=("mariadb" "mysqli" "pgsql")
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+csv_admin_cfg="none"
 
 # Compatibility function (reuse your logic)
 validate_compatibility() {
@@ -35,6 +37,7 @@ show_help(){
         --moodle-csv <comma seperated list of moodle versions>
         --php-csv <comma seperated list of php versions>
         --db-csv <comma seperated list of db types>
+        --admincfg-csv <Enter the path (relative to the script '$SCRIPT_DIR') of a NAME,VALUE csv file for admin config (leave empty if none)>
         "
       exit 1
 }
@@ -95,6 +98,7 @@ if [ ! -d "$root_folder" ]; then
   exit 1
 fi
 
+
 total_combinations=$(( ${#MOODLE_VERSIONS[@]} * ${#PHP_VERSIONS[@]} * ${#DB_TYPES[@]} ))
 # "$(IFS=,; echo "${PHP_VERSIONS[*]}")"
 STR_MOODLES="$(IFS=,; echo "${MOODLE_VERSIONS[*]}")"
@@ -114,7 +118,7 @@ for moodle in "${MOODLE_VERSIONS[@]}"; do
      
     if validate_compatibility "$moodle" "$php"; then
       for db in "${DB_TYPES[@]}"; do
-        echo "🏃🏻‍➡️ Running: ./moodle_ddev.sh --php $php --version $moodle --db $db  --root $root_folder"
+        echo "🏃🏻‍➡️ Running: ./moodle_ddev.sh --php $php --version $moodle --db $db  --root $root_folder --admincfg-csv $csv_admin_cfg"
         if $force; then 
           ./moodle_ddev.sh --php "$php" --version "$moodle" --db "$db" --force --root "$root_folder" --admincfg-csv $csv_admin_cfg
 
@@ -138,4 +142,4 @@ for moodle in "${MOODLE_VERSIONS[@]}"; do
     fi
   done
 done
-./ddev_describe.sh --root "$root_folder"
+./ddev_describe_all.sh --root "$root_folder"

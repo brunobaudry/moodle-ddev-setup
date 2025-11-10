@@ -138,6 +138,7 @@ cleanup_failed_install() {
 # -------------------------------
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 csv_admin_cfg=""
+root_folder_is_default=true
 php_version=""
 moodle_version=""
 force=false
@@ -329,7 +330,7 @@ fi
 # -------------------------------
 # ✅ Apply CSV Config
 # -------------------------------
-if [ -z "$csv_admin_cfg" ]; then
+if [ -z "$csv_admin_cfg" || "$csv_admin_cfg" = "none" ]; then
     echo "No CSV file provided..."
 else
     # Resolve csv_admin_cfg path

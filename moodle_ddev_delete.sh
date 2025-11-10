@@ -1,12 +1,35 @@
 #!/bin/bash
 
+# -------------------------------
+# ✅ Environment Checks
+# -------------------------------
+check_environment() {
+  if ! command -v docker > /dev/null; then
+    echo "❌ Docker is not running or not installed."
+    exit 1
+  fi
+
+  if ! docker info > /dev/null 2>&1; then
+    echo "❌ Docker daemon is not running. Please start Docker."
+    exit 1
+  fi
+
+  if ! command -v ddev > /dev/null; then
+    echo "❌ DDEV is not installed. Please install DDEV."
+    exit 1
+  fi
+  echo "✅ All tools are available"
+}
 # Usage: ./prune_moodle.sh <folder> [--silent]
+
+check_environment
 
 # Check if a folder was provided
 if [ -z "$1" ]; then
   echo "Usage: $0 <folder> [--silent]"
   exit 1
 fi
+
 
 root_folder="${MOODLE_DDEVS_DIR:-.}"
 TARGET_DIR="$1"
