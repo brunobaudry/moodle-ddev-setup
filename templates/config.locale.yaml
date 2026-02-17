@@ -1,0 +1,10 @@
+## For a list of valid timezones:
+## https://en.wikipedia.org/wiki/List_of_tz_database_time_zones
+timezone: Europe/Paris
+
+##  Consists of
+##  - language code (https://en.wikipedia.org/wiki/List_of_ISO_639-1_codes)
+##  - territory code (https://en.wikipedia.org/wiki/ISO_3166-1#Codes)
+##  - (optional) code-set
+web_environment:
+    - LANG=en_AU.UTF-8
