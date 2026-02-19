@@ -79,6 +79,20 @@ https://formulae.brew.sh/formula/jq
 LINUX:
 https://jqlang.org/
 
+### Python
+To parse a plugin folder and generate symlinks for the IDE and ddev mounts so that development of the plugins are unified and not duplicate.
+There is python script that does it... 
+
+@todo translate to bash.
+
+Run this setup in bash should your python installed sandboxed.
+```bash
+python3 -m venv venv
+source venv/bin/activate
+pip install pyyaml
+source /Users/bdb3/Documents/dev/git_repos/moodle-ddev-setup/venv/bin/activate
+````
+
 ## Setup
 
 ### Executables
