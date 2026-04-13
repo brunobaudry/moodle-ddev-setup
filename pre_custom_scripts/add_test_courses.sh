@@ -10,7 +10,7 @@
 # wwwroot=$(echo "$3" | jq -r '.raw.primary_url')
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 echo ">>> Copying Default course from $SCRIPT_DIR to $1"
-cp "$SCRIPT_DIR/../templates/backup-moodle2-course-8-testcourse-20250303-0813.mbz" $1/moodledata
+cp "$SCRIPT_DIR/../templates/backup-moodle2-course-8-testcourse-20250303-0813-nousers.mbz" $1/moodledata
 
 # ddev exec php ./moodle/admin/cli/restore_backup.php \
 #   --file=$backupfile \

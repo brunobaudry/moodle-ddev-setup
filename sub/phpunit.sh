@@ -20,8 +20,11 @@ fi
 # Use awk to insert before require_once line
 awk '
     /require_once.*setup.php/ {
-        print "$CFG->phpunit_prefix = '\''phpu_'\'';"
+        print "$CFG->phpunit_prefix = \"phpu_\";"
         print "$CFG->phpunit_dataroot = \"/var/www/html/phpu_moodledata\";"
+print "// Prevent qtype_stack from trying to build a Maxima auto-image during"
+print "// PHPUnit init (it times out on aarch64 and breaks the whole init)."
+print "define(\"QTYPE_STACK_TEST_CONFIG_PLATFORM\", \"none\"\);"
         print
         next
     }

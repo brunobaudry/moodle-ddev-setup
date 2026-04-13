@@ -82,6 +82,74 @@ def create_symlink(source, target, dry_run=False):
     print(f"Created symlink: {target} -> {source}")
     return True
 
+_MUTAGEN_BLOCK_START = "        # --- BEGIN docker-compose plugin mounts (auto-generated) ---"
+_MUTAGEN_BLOCK_END   = "        # --- END docker-compose plugin mounts ---"
+
+
+def update_mutagen_ignore(plugins, ddev_target, dry_run=False):
+    """Update .ddev/mutagen/mutagen.yml to ignore Docker-mounted plugin paths.
+
+    Symlinks in the Moodle tree are useful for IDE navigation on the host, but
+    Mutagen's posix-raw symlink mode would copy them into the container as broken
+    symlinks (the host path doesn't exist inside Docker), shadowing the real
+    bind-mounts from docker-compose.mounts.yaml.  Adding the paths to Mutagen's
+    ignore list prevents this while keeping the bind-mounts working correctly.
+
+    The function is idempotent: subsequent runs replace the auto-generated block
+    rather than appending duplicates.  Run 'ddev mutagen reset && ddev restart'
+    after any change.
+    """
+    mutagen_file = Path(ddev_target) / '.ddev' / 'mutagen' / 'mutagen.yml'
+
+    if not mutagen_file.exists():
+        print(f"WARNING: {mutagen_file} not found — skipping Mutagen ignore update")
+        return
+
+    content = mutagen_file.read_text()
+
+    # Remove #ddev-generated so DDEV does not overwrite our customisations.
+    lines = [l for l in content.splitlines() if l.strip() != '#ddev-generated']
+    content = '\n'.join(lines)
+
+    # Build the new ignore block (sorted for stable diffs).
+    ignore_paths = sorted(f'/moodle/{target_rel}' for _, target_rel in plugins)
+    block_lines = (
+        [
+            _MUTAGEN_BLOCK_START,
+            "        # Plugin dirs handled by docker-compose.mounts.yaml bind-mounts.",
+            "        # Mutagen must NOT sync these — the host symlinks are broken inside",
+            "        # the container and would shadow the Docker bind-mounts.",
+        ]
+        + [f'        - "{p}"' for p in ignore_paths]
+        + [_MUTAGEN_BLOCK_END]
+    )
+    new_block = '\n'.join(block_lines)
+
+    if _MUTAGEN_BLOCK_START in content:
+        # Replace existing auto-generated block.
+        start = content.index(_MUTAGEN_BLOCK_START)
+        end   = content.index(_MUTAGEN_BLOCK_END) + len(_MUTAGEN_BLOCK_END)
+        content = content[:start] + new_block + content[end:]
+    else:
+        # First run: insert the block just before the symlink: section.
+        if '    symlink:' in content:
+            content = content.replace('    symlink:', new_block + '\n    symlink:', 1)
+        else:
+            # Fallback: append at end of paths list (shouldn't normally happen).
+            content = content.rstrip('\n') + '\n' + new_block + '\n'
+
+    if dry_run:
+        print(f"\n[DRY RUN] Would update {mutagen_file} to ignore {len(ignore_paths)} plugin paths:")
+        for p in ignore_paths:
+            print(f"  {p}")
+        return
+
+    mutagen_file.write_text(content)
+    print(f"\nUpdated Mutagen ignore list in {mutagen_file}")
+    print(f"  Added/refreshed {len(ignore_paths)} plugin path(s)")
+    print("  Run 'ddev mutagen reset && ddev restart' to apply")
+
+
 def create_docker_compose_mounts(plugins, ddev_target, dry_run=False):
     """Create docker-compose.mounts.yaml file with volume mounts for plugins"""
     ddev_dir = os.path.join(ddev_target, '.ddev')
@@ -181,9 +249,10 @@ def main():
         print(f"  Type: {plugin_type}, Name: {plugin_name}")
         print(f"  Target: {target_rel}\n")
 
-    # Create docker-compose mounts file
+    # Create docker-compose mounts file and update Mutagen ignore list
     if plugins:
         create_docker_compose_mounts(plugins, ddev_target, dry_run)
+        update_mutagen_ignore(plugins, ddev_target, dry_run)
         print(f"\nProcessed {len(plugins)} plugins successfully")
     else:
         print("No valid Moodle plugin repos found")

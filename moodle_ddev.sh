@@ -18,6 +18,7 @@ source ./sub/check_environment.sh
 source ./sub/validators.sh
 source ./sub/repositories.sh
 source ./sub/admin_config.sh
+source ./sub/dockerfiles.sh
 
 # ------- VARS init ----------------
 IS_MODDLE_GIT=false
@@ -275,33 +276,16 @@ ddev config \
   --php-version="$php_version" \
   --database="$ddev_db" \
 
-ddev add-on get tyler36/ddev-locale
 
-# ls -la .ddev 
 
-DDEV_LOCALE_TEMPLATE="$SCRIPT_DIR/templates/config.locale.yaml"
-DDEV_LOCALE_FILE=".ddev/config.locale.yaml"
+# 1.a setting crazy en_AU obligatory locale...
 
-if cp -f "$DDEV_LOCALE_TEMPLATE" "$DDEV_LOCALE_FILE"; then
-  echo "File '$DDEV_LOCALE_FILE' has been overwritten with the new content from '$DDEV_LOCALE_TEMPLATE'."
-else
-  echo "Error: Failed to copy '$DDEV_LOCALE_TEMPLATE' to '$DDEV_LOCALE_FILE'." >&2
-  cleanup_failed_install
-  exit 1
-fi
+makedockerfile_forlocale ".ddev/web-build"
 
 
 # 2. Add Selenium override BEFORE starting
-cat <<EOF > .ddev/docker-compose.selenium.override.yaml
-services:
-  selenium-chrome:
-    image: seleniarm/standalone-chromium:latest
-    container_name: ${host_name}-selenium-chrome
-    ports:
-      - "4444"
-    networks:
-      - default
-EOF
+makeselenium ".ddev"
+
 
 # ddev start
 
@@ -378,8 +362,8 @@ if ! ddev exec php ./moodle/admin/cli/cfg.php --name=smtphosts --set=localhost:1
   echo "⚠️ Moodle CLI failed to setup mailpit."
 fi
 
-# "$SCRIPT_DIR/sub/phpunit.sh" $project_dir $IS_MOODLE_ABOVE_500
-# "$SCRIPT_DIR/sub/behat.sh" $project_dir $host_name $IS_MOODLE_ABOVE_500
+"$SCRIPT_DIR/sub/phpunit.sh" $project_dir $IS_MOODLE_ABOVE_500
+"$SCRIPT_DIR/sub/behat.sh" $project_dir $host_name $IS_MOODLE_ABOVE_500
 
 # -------------------------------
 # ✅ Apply CSV admin Config
@@ -396,16 +380,25 @@ else
   DEFAULT_ARGS=("$project_dir" "$MOODLE_DOC_ROOT" "$DDEV_DESCRIBE" "$moodle_version" "$php_version" "$db_type")
   # Loop through all files in the folder
   for script in "$POST_CUSTOM_SCRIPT_DIR"/*; do
-      # Check if it's a regular file and executable
-      if [[ -f "$script" && -x "$script" ]]; then
-          echo "Running $script"
-          "$script" "${DEFAULT_ARGS[@]}"
-      elif [[ -f "$script" ]]; then
-          echo "Running $script with bash"
-          bash "$script" "${DEFAULT_ARGS[@]}"
+      # Must be a regular file
+      [[ -f "$script" ]] || continue
+
+      # Must start with a shebang
+      if head -n 1 "$script" | grep -q '^#!'; then
+          if [[ -x "$script" ]]; then
+              echo "Running $script"
+              "$script" "${DEFAULT_ARGS[@]}"
+          else
+              echo "Running $script with bash"
+              bash "$script" "${DEFAULT_ARGS[@]}"
+          fi
+      else
+          echo "Skipping non-script file: $script"
       fi
   done
 fi
+
+ddev mutagen reset && ddev restart
 
 apply_csv_admin_cfg "$POST_CUSTOM_SCRIPT_DIR/plugins_admin_cfg.csv"
 
