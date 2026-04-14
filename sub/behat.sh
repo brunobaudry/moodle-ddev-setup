@@ -27,7 +27,7 @@ awk -v behat_dataroot="$behat_dataroot" -v hostname="$hostname" '
     /require_once.*setup.php/ {
         print "$CFG->behat_prefix = '\''behat_'\'';"
         print "$CFG->behat_dataroot = \"" behat_dataroot "\";"
-        print "$CFG->behat_wwwroot = \"https://" hostname ".local\";"
+        print "$CFG->behat_wwwroot = \"http://" hostname ".local\";"
         print "$CFG->behat_profiles = ["
         print "    '\''chrome'\'' => ["
         print "        '\''browser'\'' => '\''chrome'\'',"
