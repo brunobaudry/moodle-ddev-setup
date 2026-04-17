@@ -7,22 +7,22 @@
 # echo $6 # Database type
 # wwwroot=$(echo "$3" | jq -r '.raw.primary_url')
 
-# Source and destination directories
-PRIOJECT_DIR=$1
-SOURCE_DIR="/Users/bdb3/Documents/dev/git_repos/moodle_lang_packs_zip"
+# Set MOODLE_LANG_PACKS_DIR in your shell profile (e.g. ~/.zshrc) to point at a
+# directory containing Moodle language pack .zip files.
+SOURCE_DIR="${MOODLE_LANG_PACKS_DIR:-/Users/bdb3/Documents/dev/git_repos/moodle_lang_packs_zip}"
 
-DEST_DIR="${PRIOJECT_DIR}/moodledata/lang/"
+if [[ ! -d "$SOURCE_DIR" ]]; then
+    echo "⚠️  Lang packs directory not found at: $SOURCE_DIR"
+    echo "   Set MOODLE_LANG_PACKS_DIR env var to your lang packs directory — skipping."
+    exit 0
+fi
 
-# Create destination directory if it doesn't exist
+DEST_DIR="${1}/moodledata/lang/"
+
 mkdir -p "$DEST_DIR"
-
-# Copy all .zip files from source to destination
 cp "$SOURCE_DIR"/*.zip "$DEST_DIR"
 
-# Change to destination directory
 cd "$DEST_DIR" || exit
-
-# Unzip all .zip files
 for zipfile in *.zip; do
     unzip -o -qq "$zipfile" && rm "$zipfile"
 done

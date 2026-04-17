@@ -280,8 +280,8 @@ ddev config \
 
 # 1.a setting crazy en_AU obligatory locale...
 
-makedockerfile_forlocale ".ddev/web-build"
-
+makedockerfile_forlocale ".ddev/web-build" "$php_version"
+makemoodleini ".ddev/php"
 
 # 2. Add Selenium override BEFORE starting
 makeselenium ".ddev"
@@ -342,6 +342,7 @@ if ! ddev exec php ./moodle/admin/cli/install.php \
   --non-interactive \
   --agree-license \
   --wwwroot="$wwwroot" \
+  --dataroot=/var/www/html/moodledata \
   --dbtype="$db_type" \
   --dbhost=db \
   --dbname=db \
@@ -352,6 +353,9 @@ if ! ddev exec php ./moodle/admin/cli/install.php \
   --adminpass=1234 \
   --adminemail="test@test.com"; then
   echo "❌ Moodle CLI installation failed."
+  echo "   To debug, re-run without --force and inspect the PHP output above."
+  echo "   Or run manually inside the container:"
+  echo "   cd $project_dir && ddev exec php ./moodle/admin/cli/install.php --help"
   cleanup_failed_install "$project_dir"
   exit 1
 fi
