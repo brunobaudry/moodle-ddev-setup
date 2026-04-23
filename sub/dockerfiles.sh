@@ -1,4 +1,21 @@
 #!/usr/bin/env bash
+add_webimage_extra(){
+    set -e
+
+    local TARGET_DIR="$1"
+    # local PHP_VERSION="$2"   # e.g., "8.4" — required for version-specific packages
+    local TARGET_FILE="$TARGET_DIR/config.yaml"
+
+
+    # Check for existing locales-all under a REAL (non-commented) key
+    if sed -n '
+    /^[[:space:]]*#/b
+    /^webimage_extra_packages:/,/^[^ ]/p
+    ' "$FILE" | grep -q '^[[:space:]]*-[[:space:]]*locales-all'; then
+    exit 0
+    fi
+
+}
 
 makedockerfile_forlocale() {
     set -e

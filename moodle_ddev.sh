@@ -281,6 +281,7 @@ ddev config \
 # 1.a setting crazy en_AU obligatory locale...
 
 makedockerfile_forlocale ".ddev/web-build" "$php_version"
+add_webimage_extra ".ddev"
 makemoodleini ".ddev/php"
 
 # 2. Add Selenium override BEFORE starting

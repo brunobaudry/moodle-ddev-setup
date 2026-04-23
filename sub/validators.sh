@@ -15,9 +15,9 @@ DEFAULT_MOODLE=501
 validate_moodle_version() {
   local version="$1"
 
-  if [[ "$version" =~ ^(401|402|403|404|405|500|$DEFAULT_MOODLE)$ ]]; then
+  if [[ "$version" =~ ^(401|402|403|404|405|500|$DEFAULT_MOODLE|502)$ ]]; then
     return 0
-  elif [[ "$version" =~ ^(4\.[0-5]\.[0-9]+|5\.0\.[0-9]+|5\.1\.[0-9]+)$ ]]; then
+  elif [[ "$version" =~ ^(4\.[0-5]\.[0-9]+|5\.0\.[0-9]+|5\.1\.[0-9]+|5\.2\.[0-9]+)$ ]]; then
     return 0
   else
     return 1
@@ -56,6 +56,9 @@ validate_compatibility() {
     500|501)
       [[ "$php" =~ ^(8\.2|8\.3|8\.4)$ ]] && return 0
       ;;
+    502)
+      [[ "$php" =~ ^(8\.3|8\.4|8\.5)$ ]] && return 0
+      ;;  
   esac
 
   return 1
