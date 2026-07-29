@@ -308,6 +308,64 @@ _This script does not batch delete project created with a git repo._
 
 __--root__ The parent folder (OPTIONAL).
 
+## Troubleshooting
+
+### `Moodle CLI installation failed` / `Database tables already present`
+
+The DDEV project name is derived from the folder name, and DDEV keeps the
+database in a **docker volume keyed on that name**. Deleting the folder does not
+delete the volume — so re-installing over an existing project name re-attaches a
+database that still holds the previous Moodle tables, and
+`admin/cli/install.php` refuses to continue.
+
+`--force` now purges the DDEV project (containers *and* database volume) before
+recreating, and the duplicate check looks at the DDEV registration as well as
+the folder — so an orphaned project whose folder was deleted is caught too.
+
+To clear it by hand:
+
+```bash
+ddev delete --omit-snapshot -y moodle501-php8-4-mariadb
+```
+
+Note the project name uses dashes where the folder name has dots
+(`moodle501-php8.4-mariadb` → `moodle501-php8-4-mariadb`).
+
+### `Required locale 'en_AU.UTF-8' is not installed.`
+
+Moodle hardcodes `en_AU.UTF-8` for its test runners (`phpunit_util::get_locale_name()`),
+so both `admin/tool/phpunit/cli/init.php` and the Behat runner abort without it.
+There is no `$CFG` setting to change it.
+
+DDEV's web image ships a *pre-trimmed* `/etc/locale.gen` containing only a
+handful of already-uncommented locales — there is no `en_AU` line to uncomment.
+`sub/dockerfiles.sh` therefore **appends** the entry in
+`.ddev/web-build/Dockerfile` before running `locale-gen`, and the build fails
+loudly if the locale still isn't there. `moodle_ddev.sh` re-checks it in the
+running container right after `ddev restart`.
+
+To repair a project created before this fix:
+
+```bash
+cd /PATH_TO_THE_FOLDER/moodle501-php8.4-mariadb
+ddev exec -s web sudo bash -c "echo 'en_AU.UTF-8 UTF-8' >> /etc/locale.gen && locale-gen"
+```
+
+That patches the running container only. For a persistent fix, regenerate
+`.ddev/web-build/Dockerfile` and rebuild the image:
+
+```bash
+source /PATH_TO/moodle-ddev-setup/sub/dockerfiles.sh
+makedockerfile_forlocale ".ddev/web-build" "8.4"
+ddev restart
+```
+
+Verify with:
+
+```bash
+ddev exec 'locale -a | grep -i au'   # expects en_AU.utf8
+```
+
 ## Todo
 - add moodle plugins
 - add behat and phpunit setup

@@ -1,13 +1,31 @@
 #!/bin/bash
 
+# ------- DDEV project helpers --------
+# Is a DDEV project registered under this name?
+ddev_project_exists() {
+  ddev list -j 2>/dev/null | jq -e --arg n "$1" '.raw[]? | select(.name == $n)' >/dev/null 2>&1
+}
+
+# Remove a DDEV project *including its database volume*.
+# Deleting the project folder is not enough: DDEV keeps the database in a docker
+# volume keyed on the project name, so it outlives an `rm -rf` of the codebase.
+purge_ddev_project() {
+  local name="$1"
+  [[ -n "$name" ]] || return 0
+  echo "🧹 Removing DDEV project '$name' (containers + database volume)..."
+  ddev delete --omit-snapshot -y "$name" >/dev/null 2>&1 \
+    || echo "   (nothing registered under '$name' — continuing)"
+}
+
 # ------- Rollback function --------
+# Usage: cleanup_failed_install <project_dir> <ddev_project_name>
 cleanup_failed_install() {
+  local dir="$1"
+  local name="$2"
   echo "🧹 Cleaning up failed install..."
-  ddev delete --omit-snapshot -y >/dev/null 2>&1
-  rm -rf moodle moodledata .ddev
-  docker builder prune
-  cd ..
-  rm -rf "$1"
+  purge_ddev_project "$name"
+  cd / || return
+  rm -rf "$dir"
 }
 
 
@@ -187,7 +205,10 @@ if [[ "$IS_MODDLE_GIT" == true ]]; then
     exit 1
   fi
   normalisedgit=$(normalize_folder_name $GIT_INPUT)
-  project_name="${normalisedgit}__m${moodle_version}-p${php_version}-${db_type}"
+  # project_name="${normalisedgit}__m${moodle_version}-p${php_version}-${db_type}"
+  raw_project_name="${normalisedgit}__m${moodle_version}-p${php_version}-${db_type}"
+  project_name=$(normalize_project_name "$raw_project_name")
+
   echo "We will install Moodle with GIT on $GIT_URL $GIT_BRANCH"
 else
   project_name="moodle${moodle_version}-php${php_version}-${db_type}"
@@ -203,10 +224,27 @@ fi
 if [[ -n "$root_f" ]]; then
   root_folder="$(realpath $root_folder)" 
 fi
+# -----------------------------------------------------------------
 # checks if duplicate
-if [[ -d "$project_dir" && "$force" != true ]]; then
-  echo "⚠️ Directory '$project_dir' already exists. Use --force to overwrite."
-  exit 1
+#
+# Look at BOTH the folder and the DDEV registration. The DDEV project name comes
+# from the folder name, and DDEV stores the database in a docker volume keyed on
+# that name — so a leftover volume from a previous install survives `rm -rf` of
+# the folder and gets re-attached to the new one. Moodle's installer then bails
+# out with "Database tables already present; CLI installation cannot continue."
+# So --force must purge the DDEV project too, not only the directory.
+# -----------------------------------------------------------------
+host_name=$(normalize_hostname "$project_name")
+
+if [[ -d "$project_dir" ]] || ddev_project_exists "$host_name"; then
+  if [[ "$force" != true ]]; then
+    echo "⚠️ Project '$project_name' already exists."
+    [[ -d "$project_dir" ]] && echo "   directory:    $project_dir"
+    ddev_project_exists "$host_name" && echo "   ddev project: $host_name (its database volume still holds data)"
+    echo "   Use --force to overwrite."
+    exit 1
+  fi
+  purge_ddev_project "$host_name"
 fi
 
 # ---------------------------
@@ -223,7 +261,7 @@ chmod -R 777 moodledata
 # ✅ DDEV Config
 # -------------------------------
 is_moodle_version_5_1_or_higher "$moodle_version"
-host_name=$(normalize_hostname $project_name)
+# host_name was resolved before the duplicate check (it is the DDEV project name).
 MOODLE_DOC_ROOT='./moodle'
 if [[ "$IS_MOODLE_ABOVE_500" == true ]]; then
   echo "⚠️  MOODLE 5.1+ --------------------------------------"
@@ -281,7 +319,6 @@ ddev config \
 # 1.a setting crazy en_AU obligatory locale...
 
 makedockerfile_forlocale ".ddev/web-build" "$php_version"
-add_webimage_extra ".ddev"
 makemoodleini ".ddev/php"
 
 # 2. Add Selenium override BEFORE starting
@@ -307,7 +344,18 @@ fi
 
 # -------- LAUNCH Containers ---------------
 # 3. Start DDEVy
-ddev restart
+if ! ddev restart; then
+  echo "❌ 'ddev restart' failed — the web image could not be built or started."
+  echo "   Check the build output above (see .ddev/web-build/Dockerfile)."
+  cleanup_failed_install "$project_dir" "$host_name"
+  exit 1
+fi
+
+# The web image build asserts the en_AU.UTF-8 locale, but verify it in the
+# running container too: without it, PHPUnit and Behat init both abort later on.
+if ! assert_locale_available; then
+  exit 1
+fi
 
 # -------------------------------
 # Main Logic
@@ -326,7 +374,7 @@ else
   moodle_package=$(get_moodle_package "$moodle_version")
   if ! ddev composer create-project "$moodle_package"; then
     echo "❌ Composer project creation failed. Version may not exist."
-    cleanup_failed_install "$project_dir"
+    cleanup_failed_install "$project_dir" "$host_name"
     exit 1
   fi
   echo "✅ Composer Install"
@@ -354,10 +402,12 @@ if ! ddev exec php ./moodle/admin/cli/install.php \
   --adminpass=1234 \
   --adminemail="test@test.com"; then
   echo "❌ Moodle CLI installation failed."
-  echo "   To debug, re-run without --force and inspect the PHP output above."
-  echo "   Or run manually inside the container:"
+  echo "   Read the PHP output above — install.php reports the reason on its last line."
+  echo "   'Database tables already present' means a stale DDEV database volume was"
+  echo "   re-attached; 'ddev delete --omit-snapshot -y $host_name' clears it."
+  echo "   To reproduce by hand, before this cleanup wipes the folder:"
   echo "   cd $project_dir && ddev exec php ./moodle/admin/cli/install.php --help"
-  cleanup_failed_install "$project_dir"
+  cleanup_failed_install "$project_dir" "$host_name"
   exit 1
 fi
 # -------------------------------

@@ -70,7 +70,29 @@ normalize_folder_name() {
 
     echo "$final"
 }
+normalize_project_name() {
+    local name="$1"
 
+    # lowercase
+    name=$(echo "$name" | tr '[:upper:]' '[:lower:]')
+
+    # replace anything not allowed with dash
+    name=$(echo "$name" | sed -E 's/[^a-z0-9-]+/-/g')
+
+    # remove leading/trailing dashes
+    name=$(echo "$name" | sed -E 's/^-+//; s/-+$//')
+
+    # collapse multiple dashes
+    name=$(echo "$name" | sed -E 's/-+/-/g')
+
+    # trim length (safe: 50 chars)
+    name=$(echo "$name" | cut -c1-50)
+
+    # remove trailing dash again after cut
+    name=$(echo "$name" | sed -E 's/-+$//')
+
+    echo "$name"
+}
 # ---------- Create a valid HOSTNAME from repo -------------
 normalize_hostname() {
     local input="$1"
