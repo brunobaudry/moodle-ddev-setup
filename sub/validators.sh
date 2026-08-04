@@ -11,11 +11,11 @@ validate_php_version() {
   esac
 }
 # ------ MOODLE ------------------
-DEFAULT_MOODLE=501
+DEFAULT_MOODLE=502
 validate_moodle_version() {
   local version="$1"
 
-  if [[ "$version" =~ ^(401|402|403|404|405|500|$DEFAULT_MOODLE|502)$ ]]; then
+  if [[ "$version" =~ ^(401|402|403|404|405|500|501|$DEFAULT_MOODLE)$ ]]; then
     return 0
   elif [[ "$version" =~ ^(4\.[0-5]\.[0-9]+|5\.0\.[0-9]+|5\.1\.[0-9]+|5\.2\.[0-9]+)$ ]]; then
     return 0
