@@ -455,25 +455,6 @@ fi
 
 ddev mutagen reset && ddev restart
 
-# -------------------------------
-# ✅ Install the symlinked plugins
-# -------------------------------
-# post_custom_scripts/install_plugins_symlinks.sh drops plugins into the tree as
-# symlinks, which leaves Moodle with a pending upgrade. Two things break until it
-# is applied:
-#   - cron refuses to do anything ("Moodle upgrade pending, cron execution
-#     suspended"), so no scheduled or adhoc task ever runs;
-#   - the plugin settings in plugins_admin_cfg.csv below target config that only
-#     exists once the plugins are actually installed.
-# --allow-unstable is required because --repo can point at a pre-release branch,
-# and upgrade.php aborts non-interactively on any core maturity below stable.
-# Exits 0 when there is nothing to upgrade, so a plugin-less install is quiet.
-if ! ddev exec php ./moodle/admin/cli/upgrade.php --non-interactive --allow-unstable; then
-  echo "⚠️ Plugin upgrade failed — read the PHP output above."
-  echo "   Moodle cron stays suspended until this succeeds. Retry with:"
-  echo "   cd $project_dir && ddev exec php ./moodle/admin/cli/upgrade.php"
-fi
-
 apply_csv_admin_cfg "$POST_CUSTOM_SCRIPT_DIR/plugins_admin_cfg.csv"
 
 
@@ -526,9 +507,3 @@ if [[ "$open_ide" == true ]]; then
       echo 'Invalid choice or IDE not available.'
   fi
 fi
-# Moodle cron is set up by post_custom_scripts/setup_moodle_cron.sh, which the
-# post-custom-script loop above already runs with the standard DEFAULT_ARGS —
-# and it has to run *there*, before the `ddev restart`, so the web image picks
-# up .ddev/web-build/Dockerfile.cron. It must not be `source`d a second time
-# from here: sourced with no arguments it saw moodle_ddev.sh's own "$@", failed
-# its Moodle-root check, and its `exit 0` then terminated this script.

@@ -1,0 +1,24 @@
+#!/bin/bash
+
+# DDEV post-start hook for Moodle cron setup
+echo "🔄 Setting up Moodle cron after DDEV start..."
+
+# Ensure we're in the right environment
+cd /var/www/html
+
+# Check if cron is installed and running
+if ! pgrep cron >/dev/null 2>&1; then
+    echo "Starting cron service..."
+    service cron start
+fi
+
+# Setup Moodle cron job
+echo "Setting up Moodle cron job..."
+crontab -l | grep -v "moodle" | crontab -
+(crontab -l 2>/dev/null; echo "* * * * * cd /var/www/html && php admin/cli/cron.php > /dev/null 2>&1") | crontab -
+
+# Verify the cron setup
+echo "📝 Current cron jobs:"
+crontab -l
+
+echo "✅ Moodle cron ready for async task testing"
