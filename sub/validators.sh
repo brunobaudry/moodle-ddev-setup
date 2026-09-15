@@ -85,6 +85,7 @@ is_moodle_version_5_1_or_higher() {
 
 # ------------ DBs --------------
 DEFAULT_DB=mariadb
+
 validate_db(){
   case "$1" in
     "$DEFAULT_DB"|mysqli|pgsql) return 0 ;;
