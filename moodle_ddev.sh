@@ -158,8 +158,70 @@ fi
 if [[ -z "$db_type" ]]; then
   db_type=$DEFAULT_DB
 fi
-if ! validate_db "$db_type"; then
-  echo "❌ $db_type database type is not supported by ddev. Allowed: mariadb, mysqli, pgsql"
+
+# Validate database entry with compatibility check
+# if ! validate_db_with_compatibility "$moodle_version" "$php_version" "$db_type"; then
+#   echo "❌ Database validation failed."
+#   exit 1
+# fi
+
+# Handle case where no version was provided in db_type input
+# Extract any version information from the db_type
+db_type_without_version="$db_type"
+if [[ "$db_type" == *:* ]]; then
+  db_type_without_version="${db_type%:*}"
+fi
+
+# If no version was specified, get minimum required version for DDEV configuration
+if [[ ! "$db_type" == *:* ]]; then
+  min_version=$(get_min_db_version "$moodle_version" "$db_type_without_version")
+  if [[ "$min_version" != "unknown" ]]; then
+    # Append the minimum version to db_type for DDEV config
+    case "$db_type_without_version" in
+      mariadb)
+        ddev_db="mariadb:$min_version"
+        ;;
+      mysql|mysqli)
+        ddev_db="mysql:$min_version"
+        ;;
+      pgsql|postgres|postgresql)
+        ddev_db="postgres:$min_version"
+        ;;
+    esac
+    # Update db_type to include version for use in later steps
+    db_type="${db_type_without_version}:${min_version}"
+  else
+    # Fall back to default DDEV versions if we can't determine minimum
+    case "$db_type_without_version" in
+      mariadb)
+        ddev_db="mariadb:10.11"
+        ;;
+      mysql|mysqli)
+        ddev_db="mysql:8.0"
+        ;;
+      pgsql|postgres|postgresql)
+        ddev_db="postgres:15"
+        ;;
+    esac
+  fi
+else
+  # Version was provided, use it directly for DDEV
+  case "$db_type_without_version" in
+    mariadb)
+      ddev_db="mariadb:${db_type#*:}"
+      ;;
+    mysql|mysqli)
+      ddev_db="mysql:${db_type#*:}"
+      ;;
+    pgsql|postgres|postgresql)
+      ddev_db="postgres:${db_type#*:}"
+      ;;
+  esac
+fi
+
+# Validate the final DDEV database configuration
+if ! validate_db_with_compatibility "$moodle_version" "$php_version" "$db_type"; then
+  echo "❌ Database validation failed for final configuration."
   exit 1
 fi
 
@@ -191,13 +253,13 @@ csv_admin_cfg=$(resolve_csv_admin_cfg "$csv_admin_cfg" "$SCRIPT_DIR")
 echo $csv_admin_cfg
 
 # Map db_type to DDEV database option
-case "$db_type" in
-  mariadb) ddev_db="mariadb:10.11" ;;
-  mysqli) ddev_db="mysql:8.0" ;;
-  pgsql) ddev_db="postgres:15" ;;
-esac
+# case "$db_type" in
+#   mariadb) ddev_db="mariadb:10.11" ;;
+#   mysqli) ddev_db="mysql:8.0" ;;
+#   pgsql) ddev_db="postgres:15" ;;
+# esac
 
-
+raw_project_name=""
 # Set the project name
 if [[ "$IS_MODDLE_GIT" == true ]]; then
   if [[ "$GIT_URL" == false ]]; then
@@ -207,14 +269,14 @@ if [[ "$IS_MODDLE_GIT" == true ]]; then
   normalisedgit=$(normalize_folder_name $GIT_INPUT)
   # project_name="${normalisedgit}__m${moodle_version}-p${php_version}-${db_type}"
   raw_project_name="${normalisedgit}__m${moodle_version}-p${php_version}-${db_type}"
-  project_name=$(normalize_project_name "$raw_project_name")
+  
 
   echo "We will install Moodle with GIT on $GIT_URL $GIT_BRANCH"
 else
-  project_name="moodle${moodle_version}-php${php_version}-${db_type}"
+  raw_project_name=="moodle${moodle_version}-php${php_version}-${db_type}"
   echo "We will install with COMPOSER"
 fi
-
+project_name=$(normalize_project_name "$raw_project_name")
 # Build full project path
 project_dir="${root_folder}/${project_name}"
 if [ "$root_folder_is_default"=true ]; then
@@ -290,7 +352,7 @@ fi
 if [[ ! -d "$PRE_CUSTOM_SCRIPT_DIR" ]]; then
     echo "Directory '$PRE_CUSTOM_SCRIPT_DIR' does not exist. No custom scripts to run"
 else
-  DEFAULT_ARGS=("$project_dir" "$MOODLE_DOC_ROOT" "$DDEV_DESCRIBE" "$moodle_version" "$php_version" "$db_type")
+  DEFAULT_ARGS=("$project_dir" "$MOODLE_DOC_ROOT" "$DDEV_DESCRIBE" "$moodle_version" "$php_version" "$db_type_without_version")
   # Loop through all files in the folder
   for script in "$PRE_CUSTOM_SCRIPT_DIR"/*; do
       # Check if it's a regular file and executable
@@ -392,13 +454,13 @@ if ! ddev exec php ./moodle/admin/cli/install.php \
   --agree-license \
   --wwwroot="$wwwroot" \
   --dataroot=/var/www/html/moodledata \
-  --dbtype="$db_type" \
+  --dbtype="$db_type_without_version" \
   --dbhost=db \
   --dbname=db \
   --dbuser=db \
   --dbpass=db \
   --fullname="$project_name" \
-  --shortname="${moodle_version}-${php_version}-${db_type}" \
+  --shortname="${moodle_version}-${php_version}-${db_type_without_version}" \
   --adminpass=1234 \
   --adminemail="test@test.com"; then
   echo "❌ Moodle CLI installation failed."
@@ -432,7 +494,7 @@ apply_csv_admin_cfg "$csv_admin_cfg"
 if [[ ! -d "$POST_CUSTOM_SCRIPT_DIR" ]]; then
     echo "Directory '$POST_CUSTOM_SCRIPT_DIR' does not exist. No custom scripts to run"
 else
-  DEFAULT_ARGS=("$project_dir" "$MOODLE_DOC_ROOT" "$DDEV_DESCRIBE" "$moodle_version" "$php_version" "$db_type")
+  DEFAULT_ARGS=("$project_dir" "$MOODLE_DOC_ROOT" "$DDEV_DESCRIBE" "$moodle_version" "$php_version" "$db_type_without_version")
   # Loop through all files in the folder
   for script in "$POST_CUSTOM_SCRIPT_DIR"/*; do
       # Must be a regular file

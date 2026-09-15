@@ -43,30 +43,51 @@ validate_git_url() {
 # -------- CREATE FOLDER NAME FROM repo ------------
 normalize_folder_name() {
     local input="$1"
+
     # Separate repo and branch
     local repobranch="${input%@*}"
     local branch="${input##*@}"
 
-    # Remove git protocol (git@, https://, ssh://, git:// etc.)
+    # Remove git protocol (git@, https://, ssh://, git://)
     repobranch=$(echo "$repobranch" | sed -E 's#^(git@|https?://|ssh://|git://)##')
-    # Remove possible host/colon (e.g. github.com:)
+
+    # Remove host part (github.com:, github.com/, etc.)
     repobranch=$(echo "$repobranch" | sed -E 's#^[^:/]+[:/]##')
 
-    # Remove .git suffix if present
+    # Remove .git suffix
     repobranch=$(echo "$repobranch" | sed 's/\.git$//')
 
-    # Replace all invalid folder characters (/, \, :, *, ?, ", <, >, |, control chars)
-    local safe_repo=$(echo "$repobranch" | sed 's#[\\/:*?"<>|]#_#g' | tr -d '\000-\037')
-    local safe_branch=$(echo "$branch" | sed 's#[\\/:*?"<>|]#_#g' | tr -d '\000-\037')
+    normalize_part() {
+        local s="$1"
 
-    # Concatenate with "@" only if branch exists and not equal to the repository
+        # lowercase
+        s=$(echo "$s" | tr '[:upper:]' '[:lower:]')
+
+        # version separator
+        s=$(echo "$s" | tr '.' '-')
+
+        # everything else -> underscore
+        s=$(echo "$s" | sed -E 's/[^a-z0-9-]+/_/g')
+
+        # collapse separators
+        s=$(echo "$s" | sed -E 's/_+/_/g; s/-+/-/g')
+
+        # trim
+        s=$(echo "$s" | sed -E 's/^[-_]+//; s/[-_]+$//')
+
+        echo "$s"
+    }
+
+    local safe_repo
+    local safe_branch
+
+    safe_repo=$(normalize_part "$repobranch")
+    safe_branch=$(normalize_part "$branch")
+
     local final="$safe_repo"
     if [[ "$safe_branch" != "$input" && -n "$safe_branch" ]]; then
         final="${final}@${safe_branch}"
     fi
-
-    # Trim leading/trailing space and dots (optional, for safety)
-    final=$(echo "$final" | sed 's/^[ .]*//;s/[ .]*$//')
 
     echo "$final"
 }
@@ -76,20 +97,23 @@ normalize_project_name() {
     # lowercase
     name=$(echo "$name" | tr '[:upper:]' '[:lower:]')
 
-    # replace anything not allowed with dash
-    name=$(echo "$name" | sed -E 's/[^a-z0-9-]+/-/g')
+    # convert dots to dashes
+    name=$(echo "$name" | tr '.' '-')
 
-    # remove leading/trailing dashes
-    name=$(echo "$name" | sed -E 's/^-+//; s/-+$//')
+    # replace all other non-alphanumeric chars with underscore
+    name=$(echo "$name" | sed -E 's/[^a-z0-9-]+/_/g')
 
-    # collapse multiple dashes
-    name=$(echo "$name" | sed -E 's/-+/-/g')
+    # collapse repeated separators
+    name=$(echo "$name" | sed -E 's/_+/_/g; s/-+/-/g')
 
-    # trim length (safe: 50 chars)
+    # remove leading/trailing separators
+    name=$(echo "$name" | sed -E 's/^[-_]+//; s/[-_]+$//')
+
+    # trim length
     name=$(echo "$name" | cut -c1-50)
 
-    # remove trailing dash again after cut
-    name=$(echo "$name" | sed -E 's/-+$//')
+    # cleanup after trim
+    name=$(echo "$name" | sed -E 's/[-_]+$//')
 
     echo "$name"
 }
