@@ -40,6 +40,7 @@ for dir in "$root_folder"/*; do
         DB="127.0.0.1:${DB_PORT}"
         
         echo "$PROJECT_NAME 
+    Root ←          $root_folder/$PROJECT_NAME
     Web ←           $WEB_HOST
     Database ←      $DB  
     Mailpit ←       $mailpiturl  
