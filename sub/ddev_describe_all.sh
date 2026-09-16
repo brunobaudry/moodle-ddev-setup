@@ -31,15 +31,20 @@ for dir in "$root_folder"/*; do
         
         # Get DDEV info in JSON format
         INFO=$(ddev describe -j)
-        #  echo "$INFO" | jq .
-        
+       
+        STATUS=$(echo "$INFO" | jq -r '.raw.status')
+        if [ "$STATUS" = "running" ]; then
+             STATUSMESSAGE=💚
+        else
+             STATUSMESSAGE=🔴
+        fi
         WEB_HOST=$(echo "$INFO" | jq -r '.raw.services.web.https_url')
         DB_PORT=$(echo "$INFO" | jq -r '.raw.services.db.host_ports')
         mailpiturl=$(echo "$INFO" | jq -r '.raw.mailpit_https_url')
         
         DB="127.0.0.1:${DB_PORT}"
         
-        echo "$PROJECT_NAME 
+        echo "$PROJECT_NAME ($STATUSMESSAGE)
     Root ←          $root_folder/$PROJECT_NAME
     Web ←           $WEB_HOST
     Database ←      $DB  

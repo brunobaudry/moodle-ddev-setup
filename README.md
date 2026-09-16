@@ -7,7 +7,7 @@ Install moodle instance with ddev for development.
 (without the need to setup a local web server apache or nginx neither the DB engine)
 - choose your php version
 - choose your moodle version
-- choose your DB (mariadb|mysql|postgres)
+- choose your DB (mariadb|mysql|postgres), append the db engine version if you wish (postgres:16, mariadb:10.6)
 - let composer create the project or get one from any git repo and branch.
 - choose the directory where you want it installed.
 - pass a CSV table with all the admin settings you want to set.
@@ -28,28 +28,41 @@ Run this to batch get all the ddev urls of project lying in a folder.
 Expl :
 
 ```
-===== ALL DDEVs in /Users/pikachu/Documents/dev/_dockers/moodles =====
-moodle405-php8.2-mariadb 
-    https://moodle405-php8.2-mariadb.ddev.site ← Web
-    127.0.0.1:33131 ← Database
-    https://moodle405-php8.2-mariadb.ddev.site:8026 ← Mailpit
+(.venv) bdb3@macos-bdb3 moodle-ddev-setup % sub/ddev_describe_all.sh 
+===== ALL DDEVs in /Users/bdb3/Documents/dev/_dockers/moodles =====
+moodle403-php8-2-mariadb_10-6 (💚)
+    Root ←          /Users/bdb3/Documents/dev/_dockers/moodles/moodle403-php8-2-mariadb_10-6
+    Web ←           https://moodle403-php8-2-mariadb-10-6.ddev.site
+    Database ←      127.0.0.1:32848  
+    Mailpit ←       https://moodle403-php8-2-mariadb-10-6.ddev.site:8026  
 --------
-moodle500-php8.4-mariadb 
-    https://moodle500-php8.4-mariadb.ddev.site ← Web
-    127.0.0.1:33130 ← Database
-    https://moodle500-php8.4-mariadb.ddev.site:8026 ← Mailpit
+moodle501-php8.4-mariadb (💚)
+    Root ←          /Users/bdb3/Documents/dev/_dockers/moodles/moodle501-php8.4-mariadb
+    Web ←           https://moodle501-php8-4-mariadb.ddev.site
+    Database ←      127.0.0.1:32834  
+    Mailpit ←       https://moodle501-php8-4-mariadb.ddev.site:8026  
 --------
-moodle501-php8.4-mariadb 
-    https://moodle501-php8.4-mariadb.ddev.site ← Web
-    127.0.0.1:33121 ← Database
-    https://moodle501-php8.4-mariadb.ddev.site:8026 ← Mailpit
+moodle502-php8-4-pgsql_16 (💚)
+    Root ←          /Users/bdb3/Documents/dev/_dockers/moodles/moodle502-php8-4-pgsql_16
+    Web ←           https://moodle502-php8-4-pgsql-16.ddev.site
+    Database ←      127.0.0.1:32789  
+    Mailpit ←       https://moodle502-php8-4-pgsql-16.ddev.site:8026  
 --------
-moodle501-php8.4-pgsql 
-    https://moodle501-php8.4-pgsql.ddev.site ← Web
-    127.0.0.1:33125 ← Database
-    https://moodle501-php8.4-pgsql.ddev.site:8026 ← Mailpit
+moodle502-php8.3-mariadb (💚)
+    Root ←          /Users/bdb3/Documents/dev/_dockers/moodles/moodle502-php8.3-mariadb
+    Web ←           https://moodle502-php8-3-mariadb.ddev.site
+    Database ←      127.0.0.1:32788  
+    Mailpit ←       https://moodle502-php8-3-mariadb.ddev.site:8026  
 --------
+moodle502-php8.4-mariadb (🔴)
+    Root ←          /Users/bdb3/Documents/dev/_dockers/moodles/moodle502-php8.4-mariadb
+    Web ←           https://moodle502-php8-4-mariadb.ddev.site
+    Database ←      127.0.0.1:  
+    Mailpit ←       https://moodle502-php8-4-mariadb.ddev.site:8026  
 ```
+
+🔴 = not started
+💚 = running
 
 To get more detail info, navigate in each folder and do
 ```

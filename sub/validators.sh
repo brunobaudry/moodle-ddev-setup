@@ -294,32 +294,32 @@ get_min_db_version() {
     
     case "$moodle_version" in
         5.2|5.2*|502)
-            required_mariadb="10.11.0"
+            required_mariadb="10.11"
             required_mysql="8.4"
             required_postgresql="16"
             ;;
         5.1|5.1*|501)
-            required_mariadb="10.11.0"
+            required_mariadb="10.11"
             required_mysql="8.4"
             required_postgresql="15"
             ;;
         5.0|5.0*|500)
-            required_mariadb="10.11.0"
+            required_mariadb="10.11"
             required_mysql="8.4"
             required_postgresql="14"
             ;;
         4.5|4.5*|405)
-            required_mariadb="10.6.7"
+            required_mariadb="10.6"
             required_mysql="8.0"
             required_postgresql="13"
             ;;
         4.4|4.4*|404)
-            required_mariadb="10.6.7"
+            required_mariadb="10.6"
             required_mysql="8.0"
             required_postgresql="13"
             ;;
         4.3|4.3*|403)
-            required_mariadb="10.6.7"
+            required_mariadb="10.6"
             required_mysql="8.0"
             required_postgresql="13"
             ;;
