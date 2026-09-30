@@ -74,11 +74,17 @@ makemoodleini() {
     mkdir -p "$TARGET_DIR"
     cat > "$TARGET_DIR/moodle.ini" <<'EOF'
 ; MoodleHQ-aligned PHP settings
+; memory_limit = 512M
+; max_input_vars = 5000
+; upload_max_filesize = 100M
+; post_max_size = 100M
+; max_execution_time = 300
+; ### Hadrcore settings 
 memory_limit = 512M
 max_input_vars = 5000
-upload_max_filesize = 100M
-post_max_size = 100M
-max_execution_time = 300
+upload_max_filesize = 1G
+post_max_size = 1G
+max_execution_time = 600
 EOF
     echo "PHP ini created at $TARGET_DIR/moodle.ini"
 }

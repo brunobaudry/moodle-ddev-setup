@@ -23,14 +23,11 @@ validate_moodle_version() {
     return 1
   fi
 }
-
-# ------ MOODLE vs PHP -------------
-validate_compatibility() {
-  local input="$1"
-  local php="$2"
-  local moodle=""
-
-  # Normalize Moodle version
+normalize_moodle_version() {
+    local input="$1"
+    local moodle
+   
+    # Normalize Moodle version
   if [[ "$input" =~ ^MOODLE_([0-9]{3})_STABLE$ ]]; then
     moodle="${BASH_REMATCH[1]}"
   elif [[ "$input" =~ ^([0-9]+)\.([0-9]+)(\.[0-9]+)?$ ]]; then
@@ -41,6 +38,24 @@ validate_compatibility() {
   else
     return 1  # Invalid format
   fi
+  echo "$moodle"
+}
+# ------ MOODLE vs PHP -------------
+validate_compatibility() {
+  local input="$1"
+  local php="$2"
+  local moodle=$(normalize_moodle_version "$input")
+  # Normalize Moodle version
+#   if [[ "$input" =~ ^MOODLE_([0-9]{3})_STABLE$ ]]; then
+#     moodle="${BASH_REMATCH[1]}"
+#   elif [[ "$input" =~ ^([0-9]+)\.([0-9]+)(\.[0-9]+)?$ ]]; then
+#     # Convert semantic version: major.minor → major*100 + minor
+#     moodle="$(( ${BASH_REMATCH[1]} * 100 + ${BASH_REMATCH[2]} ))"
+#   elif [[ "$input" =~ ^[0-9]{3}$ ]]; then
+#     moodle="$input"
+#   else
+#     return 1  # Invalid format
+#   fi
 
   # Compatibility checks
   case "$moodle" in
@@ -57,7 +72,7 @@ validate_compatibility() {
       [[ "$php" =~ ^(8\.2|8\.3|8\.4)$ ]] && return 0
       ;;
     502)
-      [[ "$php" =~ ^(8\.3|8\.4|8\.5)$ ]] && return 0
+      [[ "$php" =~ ^(8\.3|8\.4)$ ]] && return 0
       ;;  
   esac
 
@@ -179,7 +194,7 @@ validate_db_compatibility() {
             return 1
             ;;
     esac
-    echo "! requirement for this moodle version $moodle_version are: php $required_php, maria $required_mariadb, pg $required_postgresql, mysql $required_mysql"
+    # echo "! requirement for this moodle version $moodle_version are: php $required_php, maria $required_mariadb, pg $required_postgresql, mysql $required_mysql"
     # Validate PHP compatibility (Moodle requires at least the minimum PHP version)
     if [[ "$required_php" =~ ^[0-9]+\.[0-9]+$ ]]; then
         # For versions with +, we just check if PHP is >= required version
@@ -282,6 +297,35 @@ validate_db_with_compatibility() {
     esac
 }
 
+get_default_php_for_moodle_version(){
+    local php_version=""
+    local php_all_version=""
+    local moodle_version=$(normalize_moodle_version "$1")
+    case "$moodle_version" in
+    401)
+        php_version="8.1"
+        php_all_version="7.4, 8.0, 8.1"
+      ;;
+    402|403)
+       php_version="8.2"
+       php_all_version="8.0, 8.1, 8.2"
+      ;;
+    404|405)
+       php_version="8.3"
+       php_all_version="8.1, 8.2, 8.3"
+      ;;
+    500|501)
+       php_version="8.4"
+       php_all_version="8.2, 8.3, 8.4"
+      ;;
+    502)
+      php_version="8.4"
+      php_all_version="8.3, 8.4"
+      ;;  
+  esac
+
+  echo "$php_version $php_all_version"
+}
 # Get the minimum required version for DDEV configuration
 get_min_db_version() {
     local moodle_version="$1"

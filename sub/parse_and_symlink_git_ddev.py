@@ -9,7 +9,7 @@ parser = argparse.ArgumentParser(description='Parse and symlink Moodle plugin gi
 parser.add_argument('-r','--gitRoot', required=True, help='Path to git repo directory containing Moodle plugin repos')
 parser.add_argument('-t','--ddevTarget', required=True, help='Path to ddev target (Moodle root directory)')
 parser.add_argument('--dry-run', action='store_true', help='Show what would be done without making changes')
-parser.add_argument('--moodle-version', type=float, default=5.1, help='Moodle version (default: 5.1). Versions >= 5.1 use public/ folder')
+parser.add_argument('--moodle-version', default='502', help='Moodle version (default: 5.1). Versions >= 5.1 use public/ folder')
 
 # Moodle plugin type to directory mapping
 PLUGIN_TYPE_MAP = {
@@ -18,7 +18,7 @@ PLUGIN_TYPE_MAP = {
     'qbank': 'question/bank',
     'block': 'blocks',
     'tool': 'admin/tool',
-    'tiny': 'lib/editor/tiny',
+    'tiny': 'lib/editor/tiny/plugins',
     'atto': 'lib/editor/atto',
     'editor':'lib/editor',
     'codemirror': 'lib/editor/codemirror',
@@ -48,14 +48,16 @@ def parse_plugin_name(repo_name):
         return plugin_type, plugin_name
     return None, None
 
-def get_plugin_directory(plugin_type, plugin_name, moodle_version=5.1):
+def get_plugin_directory(plugin_type, plugin_name, moodle_version=501):
+    print(f"get_plugin_directory({plugin_type}, {plugin_name}, {moodle_version}))")
     """Get the target directory path for a plugin"""
     if plugin_type in PLUGIN_TYPE_MAP:
         base_dir = PLUGIN_TYPE_MAP[plugin_type]
         plugin_path = os.path.join(base_dir, plugin_name)
 
         # Moodle 5.1+ uses public/ folder for web-accessible files
-        if moodle_version >= 5.1 or moodle_version >= 501 :
+        if moodle_version >= "501" :
+            print("Moodle 5.1+ uses public/ folder")
             return os.path.join('public', plugin_path)
         return plugin_path
     return None
@@ -189,6 +191,37 @@ def create_docker_compose_mounts(plugins, ddev_target, dry_run=False):
     print(f"\nCreated docker-compose mounts file: {compose_file}")
     print(f"Total mounts configured: {len(mounts)}")
 
+def normalize_moodle_version(input_version):
+    """
+    Convert:
+      MOODLE_403_STABLE -> 403
+      4.3              -> 403
+      4.3.1            -> 403
+      403              -> 403
+      5.1              -> 501
+      5.2              -> 502
+    """
+
+    value = str(input_version).strip()
+
+    # MOODLE_403_STABLE
+    m = re.match(r"^MOODLE_(\d{3})_STABLE$", value)
+    if m:
+        return int(m.group(1))
+
+    # 4.3 or 4.3.1
+    m = re.match(r"^(\d+)\.(\d+)(\.\d+)?$", value)
+    if m:
+        major = int(m.group(1))
+        minor = int(m.group(2))
+        return major * 100 + minor
+
+    # 403
+    if re.match(r"^\d{3}$", value):
+        return int(value)
+
+    raise ValueError(f"Invalid Moodle version format: {input_version}")
+
 def main():
     if len(sys.argv) < 2:
         parser.print_help()
@@ -199,8 +232,8 @@ def main():
     git_root = args.gitRoot
     ddev_target = args.ddevTarget
     dry_run = args.dry_run
-    moodle_version = args.moodle_version
-
+    moodle_version = str(args.moodle_version)
+    print(f"\n🔗🔗🔗🔗🔗🔗🔗 Running the python script to symlink folders from {git_root} to {ddev_target} 🔗🔗🔗🔗🔗🔗🔗🔗")
     # Validate paths
     if not os.path.exists(git_root):
         print(f"ERROR: Git root directory does not exist: {git_root}")

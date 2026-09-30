@@ -136,8 +136,9 @@ if ! validate_moodle_version "$moodle_version"; then
   exit 1
 fi
 # ------- PHP ----------
+read -r DEFAULT_PHP ALL_PHP <<< $(get_default_php_for_moodle_version "$moodle_version")
 if [[ -z "$php_version" ]]; then
-  read -p "PHP version. 7.4, 8.0, 8.1, 8.2, 8.3 or 8.4: ($DEFAULT_PHP) " php_version
+  read -p "PHP version. $ALL_PHP: ($DEFAULT_PHP) " php_version
 fi
 if [[ -z "$php_version" ]]; then
   php_version=$DEFAULT_PHP
@@ -462,7 +463,8 @@ if ! ddev exec php ./moodle/admin/cli/install.php \
   --fullname="$project_name" \
   --shortname="${moodle_version}-${php_version}-${db_type_without_version}" \
   --adminpass=1234 \
-  --adminemail="test@test.com"; then
+  --adminemail="test@test.com" \
+  >/dev/null; then
   echo "❌ Moodle CLI installation failed."
   echo "   Read the PHP output above — install.php reports the reason on its last line."
   echo "   'Database tables already present' means a stale DDEV database volume was"
@@ -475,7 +477,8 @@ fi
 # -------------------------------
 # ✅ Moodle install mailler
 # -------------------------------
-if ! ddev exec php ./moodle/admin/cli/cfg.php --name=smtphosts --set=localhost:1025; then
+if ! ddev exec php ./moodle/admin/cli/cfg.php --name=smtphosts --set=localhost:1025 \
+  >/dev/null; then
   echo "⚠️ Moodle CLI failed to setup mailpit."
 fi
 
@@ -530,7 +533,7 @@ ddev mutagen reset && ddev restart
 # --allow-unstable is required because --repo can point at a pre-release branch,
 # and upgrade.php aborts non-interactively on any core maturity below stable.
 # Exits 0 when there is nothing to upgrade, so a plugin-less install is quiet.
-if ! ddev exec php ./moodle/admin/cli/upgrade.php --non-interactive --allow-unstable; then
+if ! ddev exec php ./moodle/admin/cli/upgrade.php --non-interactive --allow-unstable >/dev/null; then
   echo "⚠️ Plugin upgrade failed — read the PHP output above."
   echo "   Moodle cron stays suspended until this succeeds. Retry with:"
   echo "   cd $project_dir && ddev exec php ./moodle/admin/cli/upgrade.php"

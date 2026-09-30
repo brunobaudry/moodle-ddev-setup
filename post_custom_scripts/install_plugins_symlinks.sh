@@ -5,8 +5,11 @@
 # echo $4 # Moodle version
 # echo $5 # PHP version
 # echo $6 # Database type
+
 THIS_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$THIS_SCRIPT_DIR/../sub/validators.sh"
 REPO_ROOT="${THIS_SCRIPT_DIR}/.."
+MOODLE_VERSION=$(normalize_moodle_version "$4") 
 
 # Set MOODLE_PLUGINS_REPO in your shell profile (e.g. ~/.zshrc) to point at the
 # directory containing your plugin repos (named moodle-TYPE_name).
@@ -28,4 +31,4 @@ fi
 "$PYTHON" "${THIS_SCRIPT_DIR}/../sub/parse_and_symlink_git_ddev.py" \
     -r "$PLUGINS" \
     -t "${1}" \
-    --moodle-version "$4"
+    --moodle-version "$MOODLE_VERSION"

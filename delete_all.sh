@@ -1,28 +1,28 @@
 #!/usr/bin/env bash
 
 # Arrays of versions
-MOODLE_VERSIONS=("401" "402" "403" "404" "405" "500" "501")
-PHP_VERSIONS=("7.4" "8.0" "8.1" "8.2" "8.3" "8.4")
-DB_TYPES=("mariadb" "mysqli" "pgsql")
+# MOODLE_VERSIONS=("401" "402" "403" "404" "405" "500" "501" "502")
+# PHP_VERSIONS=("7.4" "8.0" "8.1" "8.2" "8.3" "8.4" "8.5")
+# DB_TYPES=("mariadb" "mysqli" "pgsql")
 
 # Compatibility function (reuse your logic)
-validate_compatibility() {
-  local moodle="$1"
-  local php="$2"
+# validate_compatibility() {
+#   local moodle="$1"
+#   local php="$2"
 
-  case "$moodle" in
-    401)
-      [[ "$php" =~ ^(7\.4|8\.0|8\.1)$ ]] && return 0 ;;
-    402|403)
-      [[ "$php" =~ ^(8\.0|8\.1|8\.2)$ ]] && return 0 ;;
-    404|405)
-      [[ "$php" =~ ^(8\.1|8\.2|8\.3)$ ]] && return 0 ;;
-    500|501)
-      [[ "$php" =~ ^(8\.2|8\.3|8\.4)$ ]] && return 0 ;;
-  esac
+#   case "$moodle" in
+#     401)
+#       [[ "$php" =~ ^(7\.4|8\.0|8\.1)$ ]] && return 0 ;;
+#     402|403)
+#       [[ "$php" =~ ^(8\.0|8\.1|8\.2)$ ]] && return 0 ;;
+#     404|405)
+#       [[ "$php" =~ ^(8\.1|8\.2|8\.3)$ ]] && return 0 ;;
+#     500|501)
+#       [[ "$php" =~ ^(8\.2|8\.3|8\.4)$ ]] && return 0 ;;
+#   esac
 
-  return 1
-}
+#   return 1
+# }
 root_folder="$(realpath "${MOODLE_DDEVS_DIR:-.}")" # If MOODLE_DDEVS_DIR is set and not empty use it else use local .
 
 
@@ -52,16 +52,49 @@ if [[ "$ok_to_go" != "y" ]]; then
   exit 1
 fi
 # Iterate over all combinations
-for moodle in "${MOODLE_VERSIONS[@]}"; do
-  for php in "${PHP_VERSIONS[@]}"; do
-    if validate_compatibility "$moodle" "$php"; then
-      for db in "${DB_TYPES[@]}"; do
-        project_name="moodle${moodle}-php${php}-${db}"
-        echo "Running: ./moodle_ddev_delete.sh $project_name --silent"
-        ./moodle_ddev_delete.sh $project_name --silent
-      done
-    else
-      echo "Skipping incompatible combo: Moodle $moodle with PHP $php"
+# for moodle in "${MOODLE_VERSIONS[@]}"; do
+#   for php in "${PHP_VERSIONS[@]}"; do
+#     if validate_compatibility "$moodle" "$php"; then
+#       for db in "${DB_TYPES[@]}"; do
+#         project_name="moodle${moodle}-php${php}-${db}"
+#         echo "Running: ./moodle_ddev_delete.sh $project_name --silent"
+#         ./moodle_ddev_delete.sh $project_name --silent
+#       done
+#     else
+#       echo "Skipping incompatible combo: Moodle $moodle with PHP $php"
+#     fi
+#   done
+# done
+THIS_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+##### Iterate over all ddev projects
+for dir in "$root_folder"/*; do
+    if [ -d "$dir/.ddev" ]; then
+        cd "$dir" || continue
+        PROJECT_NAME=$(basename "$dir")
+        echo "DELETING $PROJECT_NAME"
+        "$THIS_SCRIPT_DIR/moodle_ddev_delete.sh" $PROJECT_NAME --silent
+        
+        
+#         # Get DDEV info in JSON format
+#         INFO=$(ddev describe -j)
+       
+#         STATUS=$(echo "$INFO" | jq -r '.raw.status')
+#         if [ "$STATUS" = "running" ]; then
+#              STATUSMESSAGE=💚
+#         else
+#              STATUSMESSAGE=🔴
+#         fi
+#         WEB_HOST=$(echo "$INFO" | jq -r '.raw.services.web.https_url')
+#         DB_PORT=$(echo "$INFO" | jq -r '.raw.services.db.host_ports')
+#         mailpiturl=$(echo "$INFO" | jq -r '.raw.mailpit_https_url')
+        
+#         DB="127.0.0.1:${DB_PORT}"
+        
+#         echo "$PROJECT_NAME ($STATUSMESSAGE)
+#     Root ←          $root_folder/$PROJECT_NAME
+#     Web ←           $WEB_HOST
+#     Database ←      $DB  
+#     Mailpit ←       $mailpiturl  
+# --------"
     fi
-  done
 done

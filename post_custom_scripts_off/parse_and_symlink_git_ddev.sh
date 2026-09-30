@@ -162,6 +162,7 @@ if [[ ! -d "$DDEV_TARGET" ]] && [[ "$DRY_RUN" == "false" ]]; then
     exit 1
 fi
 
+echo "🔒🔒🔒🔒🔒 Symlinking frrom BASH script"
 echo "Git root: $GIT_ROOT"
 echo "DDEV target: $DDEV_TARGET"
 echo "Moodle version: $MOODLE_VERSION"
