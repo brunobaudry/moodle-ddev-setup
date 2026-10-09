@@ -15,9 +15,9 @@ DEFAULT_MOODLE=502
 validate_moodle_version() {
   local version="$1"
 
-  if [[ "$version" =~ ^(401|402|403|404|405|500|501|$DEFAULT_MOODLE)$ ]]; then
+  if [[ "$version" =~ ^(401|402|403|404|405|500|501|502|503|$DEFAULT_MOODLE)$ ]]; then
     return 0
-  elif [[ "$version" =~ ^(4\.[0-5]\.[0-9]+|5\.0\.[0-9]+|5\.1\.[0-9]+|5\.2\.[0-9]+)$ ]]; then
+  elif [[ "$version" =~ ^(4\.[0-5]\.[0-9]+|5\.0\.[0-9]+|5\.1\.[0-9]+|5\.2\.[0-9]+|5\.3\.[0-9]+)$ ]]; then
     return 0
   else
     return 1
@@ -73,7 +73,10 @@ validate_compatibility() {
       ;;
     502)
       [[ "$php" =~ ^(8\.3|8\.4)$ ]] && return 0
-      ;;  
+      ;;
+          503)
+      [[ "$php" =~ ^(8\.3|8\.4)$ ]] && return 0
+      ;; 
   esac
 
   return 1
@@ -153,21 +156,27 @@ validate_db_compatibility() {
     local required_postgresql=""
     
     case "$moodle_version" in
+            5.3|5.3*|503)
+            required_php="8.3"
+            required_mariadb="11.4"
+            required_mysql="8.4"
+            required_postgresql="17"
+            ;;
         5.2|5.2*|502)
             required_php="8.3"
-            required_mariadb="10.11.0"
+            required_mariadb="10.11"
             required_mysql="8.4"
             required_postgresql="16"
             ;;
         5.1|5.1*|501)
             required_php="8.2"
-            required_mariadb="10.11.0"
+            required_mariadb="10.11"
             required_mysql="8.4"
             required_postgresql="15"
             ;;
         5.0|5.0*|500)
             required_php="8.2"
-            required_mariadb="10.11.0"
+            required_mariadb="10.11"
             required_mysql="8.4"
             required_postgresql="14"
             ;;
@@ -179,13 +188,13 @@ validate_db_compatibility() {
             ;;
         4.4|4.4*|404)
             required_php="8.1"
-            required_mariadb="10.6.7"
+            required_mariadb="10.6"
             required_mysql="8.0"
             required_postgresql="13"
             ;;
         4.3|4.3*|403)
             required_php="8.0"
-            required_mariadb="10.6.7"
+            required_mariadb="10.6"
             required_mysql="8.0"
             required_postgresql="13"
             ;;
@@ -318,10 +327,10 @@ get_default_php_for_moodle_version(){
        php_version="8.4"
        php_all_version="8.2, 8.3, 8.4"
       ;;
-    502)
+    502|503)
       php_version="8.4"
       php_all_version="8.3, 8.4"
-      ;;  
+      ;;
   esac
 
   echo "$php_version $php_all_version"
@@ -337,6 +346,11 @@ get_min_db_version() {
     local required_postgresql=""
     
     case "$moodle_version" in
+        5.3|5.3*|503)
+            required_mariadb="11.4"
+            required_mysql="8.4"
+            required_postgresql="17"
+            ;;
         5.2|5.2*|502)
             required_mariadb="10.11"
             required_mysql="8.4"
