@@ -49,8 +49,10 @@ echo "Behat configuration added successfully before require_once line."
 
 # Optional initialization commands:
 INIT_SCRIPT="moodle/admin/tool/behat/cli/init.php"
-if [[ "$IS_MOODLE_ABOVE_500" == true ]]; then
+if [[ -f "${folder}/moodle/public/admin/tool/behat/cli/init.php" ]]; then
   INIT_SCRIPT="moodle/public/admin/tool/behat/cli/init.php"
+elif [[ -f "${folder}/moodle/admin/tool/behat/cli/init.php" ]]; then
+  INIT_SCRIPT="moodle/admin/tool/behat/cli/init.php"
 fi
 echo "🔍 Initializing Behat environment..."
 if ! ddev exec php "$INIT_SCRIPT"; then

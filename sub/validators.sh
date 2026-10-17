@@ -10,6 +10,13 @@ validate_php_version() {
     *) return 1 ;;
   esac
 }
+normalize_php_version() {
+  local input="$1"
+  local php
+  # Strip non-alphanumeric chars (e.g. 8.4 -> 84, 8.2 -> 82, php8.4 -> 84)
+  php=$(echo "$input" | tr '[:upper:]' '[:lower:]' | sed -E 's/^php//; s/[^a-z0-9]+//g')
+  echo "$php"
+}
 # ------ MOODLE ------------------
 DEFAULT_MOODLE=502
 validate_moodle_version() {
@@ -109,6 +116,17 @@ validate_db(){
     "$DEFAULT_DB"|mysqli|pgsql) return 0 ;;
     *) return 1 ;;
   esac
+}
+normalize_db_version() {
+  local input="$1"
+  local db_ver
+  # If input is in format engine:version (e.g. mariadb:10.11 or postgres:15), extract version part
+  if [[ "$input" == *:* ]]; then
+    input="${input#*:}"
+  fi
+  # Strip non-alphanumeric chars (e.g. 10.11 -> 1011, 8.0 -> 80, 10-6 -> 106, 15 -> 15)
+  db_ver=$(echo "$input" | tr '[:upper:]' '[:lower:]' | sed -E 's/[^a-z0-9]+//g')
+  echo "$db_ver"
 }
 #!/bin/bash
 # -------------------------------
@@ -381,6 +399,16 @@ get_min_db_version() {
             required_mysql="8.0"
             required_postgresql="13"
             ;;
+        4.2|4.2*|402)
+            required_mariadb="10.6"
+            required_mysql="8.0"
+            required_postgresql="13"
+            ;;
+        4.1|4.1*|401)
+            required_mariadb="10.6"
+            required_mysql="8.0"
+            required_postgresql="13"
+            ;;
         *)
             echo "unknown"
             return 1
@@ -391,10 +419,10 @@ get_min_db_version() {
         mariadb)
             echo "$required_mariadb"
             ;;
-        mysql)
+        mysql|mysqli)
             echo "$required_mysql"
             ;;
-        postgresql)
+        pgsql|postgres|postgresql)
             echo "$required_postgresql"
             ;;
         *)

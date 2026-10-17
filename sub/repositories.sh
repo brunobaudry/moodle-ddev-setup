@@ -44,52 +44,34 @@ validate_git_url() {
 normalize_folder_name() {
     local input="$1"
 
-    # Separate repo and branch
-    local repobranch="${input%@*}"
-    local branch="${input##*@}"
-
-    # Remove git protocol (git@, https://, ssh://, git://)
-    repobranch=$(echo "$repobranch" | sed -E 's#^(git@|https?://|ssh://|git://)##')
-
-    # Remove host part (github.com:, github.com/, etc.)
-    repobranch=$(echo "$repobranch" | sed -E 's#^[^:/]+[:/]##')
-
-    # Remove .git suffix
-    repobranch=$(echo "$repobranch" | sed 's/\.git$//')
-
-    normalize_part() {
-        local s="$1"
-
-        # lowercase
-        s=$(echo "$s" | tr '[:upper:]' '[:lower:]')
-
-        # version separator
-        s=$(echo "$s" | tr '.' '-')
-
-        # everything else -> underscore
-        s=$(echo "$s" | sed -E 's/[^a-z0-9-]+/_/g')
-
-        # collapse separators
-        s=$(echo "$s" | sed -E 's/_+/_/g; s/-+/-/g')
-
-        # trim
-        s=$(echo "$s" | sed -E 's/^[-_]+//; s/[-_]+$//')
-
-        echo "$s"
-    }
-
-    local safe_repo
-    local safe_branch
-
-    safe_repo=$(normalize_part "$repobranch")
-    safe_branch=$(normalize_part "$branch")
-
-    local final="$safe_repo"
-    if [[ "$safe_branch" != "$input" && -n "$safe_branch" ]]; then
-        final="${final}@${safe_branch}"
+    if [[ -z "$input" || "$input" == "composer" ]]; then
+        echo "composer"
+        return 0
     fi
 
-    echo "$final"
+    # Strip protocol prefix (e.g. ssh://, https://, http://, git://)
+    local repobranch="${input#[a-zA-Z]*://}"
+
+    # Strip user auth prefix (e.g. git@)
+    repobranch="${repobranch#git@}"
+
+    # Strip branch if specified with @branch
+    repobranch="${repobranch%@*}"
+
+    # Remove host and optional port (github.com:, gitlab.com:2222/, gitlab.com/)
+    repobranch=$(echo "$repobranch" | sed -E 's#^[^:/]+(:[0-9]+)?[:/]##; s#\.git$##')
+
+    # Extract user name (first segment before /)
+    local user="${repobranch%%/*}"
+
+    # Normalize user name: lowercase and keep alphanumeric, hyphen, underscore
+    user=$(echo "$user" | tr '[:upper:]' '[:lower:]' | sed -E 's/[^a-z0-9_-]+//g')
+
+    if [[ -z "$user" ]]; then
+        echo "git"
+    else
+        echo "$user"
+    fi
 }
 normalize_project_name() {
     local name="$1"
@@ -97,54 +79,47 @@ normalize_project_name() {
     # lowercase
     name=$(echo "$name" | tr '[:upper:]' '[:lower:]')
 
-    # convert dots to dashes
-    name=$(echo "$name" | tr '.' '-')
+    # replace colons, dots, underscores with hyphens
+    name=$(echo "$name" | sed -E 's/[:._]+/-/g')
 
-    # replace all other non-alphanumeric chars with underscore
-    name=$(echo "$name" | sed -E 's/[^a-z0-9-]+/_/g')
+    # replace all other non-alphanumeric chars with hyphen
+    name=$(echo "$name" | sed -E 's/[^a-z0-9-]+/-/g')
 
-    # collapse repeated separators
-    name=$(echo "$name" | sed -E 's/_+/_/g; s/-+/-/g')
+    # collapse repeated hyphens
+    name=$(echo "$name" | sed -E 's/-+/-/g')
 
-    # remove leading/trailing separators
-    name=$(echo "$name" | sed -E 's/^[-_]+//; s/[-_]+$//')
+    # remove leading/trailing hyphens
+    name=$(echo "$name" | sed -E 's/^-+//; s/-+$//')
 
-    # trim length
-    name=$(echo "$name" | cut -c1-50)
+    # trim length to 63 chars max
+    name=$(echo "$name" | cut -c1-63)
 
-    # cleanup after trim
-    name=$(echo "$name" | sed -E 's/[-_]+$//')
+    # cleanup trailing hyphen after trim
+    name=$(echo "$name" | sed -E 's/-+$//')
 
     echo "$name"
 }
 # ---------- Create a valid HOSTNAME from repo -------------
 normalize_hostname() {
     local input="$1"
-    # Split repo and branch on '@'
-    local repobranch="${input%@*}"
-    local branch="${input##*@}"
 
-    # Remove git protocol (git@, https://, ssh://, git:// etc.)
-    repobranch=$(echo "$repobranch" | sed -E 's#^(git@|https?://|ssh://|git://)##')
-    # Remove possible host/colon (e.g. github.com:)
-    repobranch=$(echo "$repobranch" | sed -E 's#^[^:/]+[:/]##')
-    # Remove .git suffix
-    repobranch=$(echo "$repobranch" | sed 's/\.git$//')
-
-    # Join repo and branch if branch is present and differs from the repo itself
-    local name="$repobranch"
-    if [[ "$branch" != "$input" && -n "$branch" ]]; then
-        name="${name}-${branch}"
+    # If input looks like a git URL (contains protocol or /), extract the user/source
+    if [[ "$input" =~ (git@|https?://|ssh://|git://|/) ]]; then
+        input=$(normalize_folder_name "$input")
     fi
 
     # Only allow a-z, 0-9, hyphens. Convert to lowercase, replace all other chars with hyphen.
-    name=$(echo "$name" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9-]/-/g')
+    local name
+    name=$(echo "$input" | tr '[:upper:]' '[:lower:]' | sed -E 's/[^a-z0-9-]+/-/g')
 
     # Collapse multiple hyphens, strip leading/trailing hyphens
     name=$(echo "$name" | sed -E 's/-+/-/g; s/^-+//; s/-+$//')
 
     # Truncate to 63 characters (single hostname label limit)
     name=$(echo "$name" | cut -c1-63)
+
+    # Strip trailing hyphen after truncation
+    name=$(echo "$name" | sed -E 's/-+$//')
 
     echo "$name"
 }
@@ -156,6 +131,8 @@ install_moodle_git() {
   local git_url="$1"
   local branch="$2"
   local target_dir="$3"
+  local project_dir="${4:-}"
+  local host_name="${5:-}"
 
   echo "📥 Cloning Moodle from $git_url (branch: ${branch:-default})..."
   if [ -n "$branch" ]; then
@@ -166,15 +143,14 @@ install_moodle_git() {
 
   if [ $? -ne 0 ]; then
     echo "❌ Git clone failed. Check URL or branch."
-    cleanup_failed_install "$target_dir"
+    cleanup_failed_install "${project_dir:-$target_dir}" "$host_name"
     exit 1
   fi
 
   echo "📦 Installing dependencies via Composer..."
-  cd "$target_dir" || exit 1
-  if ! ddev composer install --no-dev; then
+  if ! (cd "$target_dir" && ddev composer install --no-dev); then
     echo "❌ Composer install failed."
-    cleanup_failed_install "$target_dir"
+    cleanup_failed_install "${project_dir:-$target_dir}" "$host_name"
     exit 1
   fi
 }

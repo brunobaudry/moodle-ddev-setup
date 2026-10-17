@@ -220,6 +220,14 @@ else
   esac
 fi
 
+# Normalize DB type for Moodle CLI
+case "$db_type_without_version" in
+  mariadb) moodle_db_type="mariadb" ;;
+  mysql|mysqli) moodle_db_type="mysqli" ;;
+  pgsql|postgres|postgresql) moodle_db_type="pgsql" ;;
+  *) moodle_db_type="$db_type_without_version" ;;
+esac
+
 # Validate the final DDEV database configuration
 if ! validate_db_with_compatibility "$moodle_version" "$php_version" "$db_type"; then
   echo "❌ Database validation failed for final configuration."
@@ -262,31 +270,40 @@ echo $csv_admin_cfg
 
 raw_project_name=""
 # Set the project name
+norm_moodle_version=$(normalize_moodle_version "$moodle_version" 2>/dev/null || echo "$moodle_version")
+norm_php_version=$(normalize_php_version "$php_version" 2>/dev/null || echo "$php_version")
+norm_db_version=$(normalize_db_version "$ddev_db" 2>/dev/null || echo "")
+
 if [[ "$IS_MODDLE_GIT" == true ]]; then
   if [[ "$GIT_URL" == false ]]; then
     echo "❌ Invalid git URL"
     exit 1
   fi
-  normalisedgit=$(normalize_folder_name $GIT_INPUT)
-  # project_name="${normalisedgit}__m${moodle_version}-p${php_version}-${db_type}"
-  raw_project_name="${normalisedgit}__m${moodle_version}-p${php_version}-${db_type}"
-  
-
+  normalisedgit=$(normalize_folder_name "$GIT_INPUT")
+  if [[ -n "$norm_db_version" ]]; then
+    raw_project_name="${normalisedgit}-${norm_moodle_version}-${norm_php_version}-${db_type_without_version}-${norm_db_version}"
+  else
+    raw_project_name="${normalisedgit}-${norm_moodle_version}-${norm_php_version}-${db_type_without_version}"
+  fi
   echo "We will install Moodle with GIT on $GIT_URL $GIT_BRANCH"
 else
-  raw_project_name=="moodle${moodle_version}-php${php_version}-${db_type}"
+  if [[ -n "$norm_db_version" ]]; then
+    raw_project_name="composer-${norm_moodle_version}-${norm_php_version}-${db_type_without_version}-${norm_db_version}"
+  else
+    raw_project_name="composer-${norm_moodle_version}-${norm_php_version}-${db_type_without_version}"
+  fi
   echo "We will install with COMPOSER"
 fi
 project_name=$(normalize_project_name "$raw_project_name")
-# Build full project path
-project_dir="${root_folder}/${project_name}"
-if [ "$root_folder_is_default"=true ]; then
+if [[ "$root_folder_is_default" == true ]]; then
   read -e -p "Enter the path where you want '${project_name}' installed. Default to local ($root_folder) " root_f
 fi
 # if the user gave a folder else use default
 if [[ -n "$root_f" ]]; then
-  root_folder="$(realpath $root_folder)" 
+  root_folder="$(realpath "$root_f")" 
 fi
+# Build full project path
+project_dir="${root_folder}/${project_name}"
 # -----------------------------------------------------------------
 # checks if duplicate
 #
@@ -428,7 +445,7 @@ if [[ "$IS_MODDLE_GIT" == true ]]; then
   # ✅ GIT Install
   # Expected format: git:<repo_url>@<branch>
   # -------------------------------
-  install_moodle_git "$GIT_URL" "$GIT_BRANCH" "$project_dir/moodle"
+  install_moodle_git "$GIT_URL" "$GIT_BRANCH" "$project_dir/moodle" "$project_dir" "$host_name"
   echo "✅ GIT Install"
 else
   # -------------------------------
@@ -455,16 +472,15 @@ if ! ddev exec php ./moodle/admin/cli/install.php \
   --agree-license \
   --wwwroot="$wwwroot" \
   --dataroot=/var/www/html/moodledata \
-  --dbtype="$db_type_without_version" \
+  --dbtype="$moodle_db_type" \
   --dbhost=db \
   --dbname=db \
   --dbuser=db \
   --dbpass=db \
   --fullname="$project_name" \
-  --shortname="${moodle_version}-${php_version}-${db_type_without_version}" \
+  --shortname="${moodle_version}-${php_version}-${moodle_db_type}" \
   --adminpass=1234 \
-  --adminemail="test@test.com" \
-  >/dev/null; then
+  --adminemail="test@test.com"; then
   echo "❌ Moodle CLI installation failed."
   echo "   Read the PHP output above — install.php reports the reason on its last line."
   echo "   'Database tables already present' means a stale DDEV database volume was"
