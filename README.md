@@ -1,399 +1,348 @@
-# Introduction
-A linux or Macos set of bash script to automate the installation of Moodle and [DDEV](https://ddev.com/) developement environements.
-(it should work on windows with small adjustments).
+# Moodle DDEV Setup
 
-__moodle-ddev.sh__  
-Install moodle instance with ddev for development. 
-(without the need to setup a local web server apache or nginx neither the DB engine)
-- choose your php version
-- choose your moodle version
-- choose your DB (mariadb|mysql|postgres), append the db engine version if you wish (postgres:16, mariadb:10.6)
-- let composer create the project or get one from any git repo and branch.
-- choose the directory where you want it installed.
-- pass a CSV table with all the admin settings you want to set.
-- add some custom post scripts to tailor your installations.
-- include MoMoPDA (Modular Moodle Plugin Development Assistant) prompt library and environment configuration for AI agents (Claude Code, Cursor, Copilot, Junie, Windsurf, Gemini, etc.).
-- Start developping and testing in less than a minute using a clean moodle install ready under ddev generated url on your locahost.
+A complete suite of Bash and Python scripts to automate the installation, configuration, testing, and management of [Moodle](https://moodle.org/) development environments using [DDEV](https://ddev.com/) on macOS and Linux (compatible with Windows WSL2).
 
-__moodle-ddev_delete.sh__ 
-Delete a single Moodle [DDEV](https://ddev.com/) install
+Deploy a clean, fully-configured Moodle instance ready on `localhost` / `*.ddev.site` in under a minute without needing to manually configure web servers, database servers, or test runners.
 
-__run_all.sh__
-Run several install in batch by passing a list of moodles, phps or dbs.
-__delete_all.sh__
-Remove all installs in batch.
+---
 
-__sub/ddev_describe_all.sh__
-Run this to batch get all the ddev urls of project lying in a folder.
+## Key Features
 
-Expl :
+- **Multi-Version Moodle Support**: Deploy any Moodle version from 4.1 (`401`) to 5.3+ (`503`), using standard version codes (e.g., `405`, `502`) or semantic versions (e.g., `4.5.1`, `5.1.0`).
+- **Moodle 5.1+ Web Root Handling**: Automatically configures DDEV docroot for Moodle 5.1+ (`moodle/public`) and earlier versions (`moodle/`).
+- **PHP Version Matrix**: Supports PHP 7.4 through 8.4 with automated compatibility validation against Moodle versions.
+- **Database Engine Flexibility**: Choose MariaDB, MySQL, or PostgreSQL (`mariadb`, `mysqli`/`mysql`, `pgsql`/`postgres`/`postgresql`). Automatically applies the minimum required database version or accepts custom version tags (e.g., `mariadb:10.11`, `mysql:8.0`, `postgres:16`).
+- **Flexible Source Modes**: Install via Composer (`ddev composer create-project`) or clone any Git repository and branch (e.g. `--repo git@github.com:user/moodle.git@MDL-12345-main`).
+- **Automated Test Runners (PHPUnit & Behat)**:
+  - Generates `en_AU.UTF-8` locale in `.ddev/web-build/Dockerfile` required by Moodle test runners.
+  - Automatically configures `$CFG->phpunit_*` and `$CFG->behat_*` (including Selenium Chrome and Firefox browser profiles) in `config.php`.
+  - Automatically runs PHPUnit and Behat CLI environment initializations (`admin/tool/phpunit/cli/init.php` and `admin/tool/behat/cli/init.php`).
+- **In-Container Moodle Cron Service**:
+  - Automatically provisions and runs cron within the web container (`/etc/cron.d/moodle-cron`) every minute under the container web user.
+  - Automatically logs task executions to `/var/log/moodle-cron.log`.
+- **MoMoPDA AI Agent Support**:
+  - Automatically integrates the [MoMoPDA](https://github.com/wilenius/momopda) (Modular Moodle Plugin Development Assistant) prompt library into generated projects.
+  - Creates orchestrator and rule files for all major AI assistants: Claude Code (`CLAUDE.md`), Cursor (`.cursorrules`, `.cursor/rules/moodle-momopda.mdc`), Windsurf (`.windsurfrules`), GitHub Copilot (`.github/copilot-instructions.md`), JetBrains Junie (`.junie/guidelines.md`), Gemini (`GEMINI.md`), and general agents (`AGENTS.md`, `.prompts/`).
+  - Sets `MOODLE_DIR` and `MOMOPDA_DIR` in `.env`, `.env.ai`, `.ddev/docker-compose.momopda.yaml`, and container profile scripts for Moodle Plugin CI validation.
+- **Plugin Symlinking & Mutagen Bind-Mounting**:
+  - Discovers local Moodle plugin git repositories from `MOODLE_PLUGINS_REPO` and symlinks them into Moodle core Frankensyle directories for host IDEs.
+  - Generates `.ddev/docker-compose.mounts.yaml` bind-mounts and updates `.ddev/mutagen/mutagen.yml` ignore rules to ensure seamless bidirectional synchronization without broken container symlinks.
+- **Pre-set Admin Configuration via CSV**: Pass a CSV table (`--admincfg-csv`) with `NAME,VALUE` or `NAME,VALUE,COMPONENT` pairs to pre-configure Moodle settings (e.g. debug level, cache settings, language lists).
+- **Language Packs & Test Courses**:
+  - Automatically installs language packs from `MOODLE_LANG_PACKS_DIR`.
+  - Restores default backup test courses (`.mbz`).
+- **Pre- & Post-Install Lifecycle Hooks**: Extensible hook system (`pre_custom_scripts/` and `post_custom_scripts/`) receiving 6 contextual parameters.
+- **IDE Auto-Detection & Launch**: Detects installed IDEs (PhpStorm, VS Code, Cursor, Windsurf, Sublime Text, Eclipse, etc.) and opens the generated project automatically with `--ide`.
+- **Batch Management**: Batch-install whole matrices of Moodle, PHP, and DB combinations with `run_all.sh`, batch-inspect with `sub/ddev_describe_all.sh`, and batch-delete with `delete_all.sh`.
+- **Safe Rollback & Clean Deletion**: Automatically cleans up containers and directories if installation fails. `moodle_ddev_delete.sh` and `--force` cleanly purge Docker containers and database volumes.
 
+---
+
+## Scripts Overview
+
+| Script | Description |
+|---|---|
+| `moodle_ddev.sh` | Main installer script (interactive or CLI flags) to create a fully configured Moodle instance. |
+| `moodle_ddev_delete.sh` | Cleanly removes a single Moodle instance, its DDEV containers, and database Docker volume. |
+| `run_all.sh` | Batch installer to generate all compatible combinations of Moodle, PHP, and database engines. |
+| `delete_all.sh` | Batch cleaner to delete all DDEV Moodle instances within a target folder. |
+| `sub/ddev_describe_all.sh` | Scans a folder and displays status, URLs, database ports, and Mailpit links for all projects. |
+| `sub/list_available_ide.sh` | Detects and lists available IDEs on the host machine. |
+
+---
+
+## Prerequisites
+
+1. **[DDEV](https://ddev.com/) v1.21+**
+2. **[Docker](https://ddev.com/get-started/)** (Docker Desktop, OrbStack, or Colima)
+3. **[Composer](https://getcomposer.org/)**
+4. **[jq](https://jqlang.org/)** (JSON processor for DDEV metadata)
+   - macOS: `brew install jq`
+   - Linux: `sudo apt-get install jq` / `sudo dnf install jq`
+5. **Python 3 with PyYAML** (used for plugin parsing and Mutagen mount generation):
+   ```bash
+   python3 -m venv .venv
+   source .venv/bin/activate
+   pip install pyyaml
+   ```
+
+Make sure scripts are executable:
+```bash
+chmod +x moodle_ddev.sh moodle_ddev_delete.sh run_all.sh delete_all.sh sub/*.sh post_custom_scripts/*.sh
 ```
-(.venv) bdb3@macos-bdb3 moodle-ddev-setup % sub/ddev_describe_all.sh 
-===== ALL DDEVs in /Users/bdb3/Documents/dev/_dockers/moodles =====
-moodle403-php8-2-mariadb_10-6 (💚)
-    Root ←          /Users/bdb3/Documents/dev/_dockers/moodles/moodle403-php8-2-mariadb_10-6
-    Web ←           https://moodle403-php8-2-mariadb-10-6.ddev.site
-    Database ←      127.0.0.1:32848  
-    Mailpit ←       https://moodle403-php8-2-mariadb-10-6.ddev.site:8026  
---------
-moodle501-php8.4-mariadb (💚)
-    Root ←          /Users/bdb3/Documents/dev/_dockers/moodles/moodle501-php8.4-mariadb
+
+---
+
+## Environment Variables (Optional)
+
+Configure these in your shell profile (e.g., `~/.zshrc` or `~/.bashrc`):
+
+| Variable | Description |
+|---|---|
+| `MOODLE_DDEVS_DIR` | Default parent directory where all Moodle DDEV instances will be created (defaults to current directory `.`). |
+| `MOODLE_PLUGINS_REPO` | Directory containing your local Moodle plugin git repositories (named `moodle-TYPE_name`). |
+| `MOODLE_LANG_PACKS_DIR` | Directory containing Moodle language pack `.zip` files to auto-install into `moodledata/lang/`. |
+| `MOMOPDA_REPO` | Custom git URL for the MoMoPDA AI prompt repository (defaults to `https://github.com/wilenius/momopda.git`). |
+
+---
+
+## Usage: `moodle_ddev.sh` (Main Script)
+
+### Syntax
+
+```bash
+./moodle_ddev.sh --php <php_version> --version <moodle_version> [OPTIONS]
+```
+
+### Options
+
+| Option | Description |
+|---|---|
+| `--version <version>` | Moodle version (e.g. `401`..`503` or `4.1.0`..`5.3.0`). Defaults to `502`. |
+| `--php <version>` | PHP version (`7.4`, `8.0`, `8.1`, `8.2`, `8.3`, `8.4`). Defaults to `8.4`. |
+| `--db <type[:version]>` | Database type: `mariadb`, `mysql`/`mysqli`, `pgsql`/`postgres`/`postgresql`. Optional version suffix (e.g. `mariadb:10.11`, `mysql:8.0`, `postgres:16`). Defaults to `mariadb`. |
+| `--repo <composer\|URL[@branch]>` | Source to install from: `composer` (default) or a Git repository with optional `@branch`. |
+| `--root <folder>` | Parent directory for the installation. Defaults to `$MOODLE_DDEVS_DIR` or current directory. |
+| `--admincfg-csv <path>` | Path to a CSV file with `NAME,VALUE` or `NAME,VALUE,COMPONENT` pairs to pre-configure Moodle admin settings. |
+| `--ide [IDE_NAME]` | Open project in specified IDE (e.g. `phpstorm`, `code`, `cursor`) or prompt from available IDEs upon completion. |
+| `--momopda [REPO_URL]` | Specify a custom MoMoPDA AI prompt repository or fork. |
+| `--no-momopda` | Disable MoMoPDA AI agent configuration. |
+| `--force` | Cleanly purge existing DDEV project (containers, database volume, and directory) before recreating. |
+
+### Examples
+
+**Default installation (Interactive prompt):**
+```bash
+./moodle_ddev.sh
+```
+
+**Moodle 5.0 with PHP 8.4 and MariaDB:**
+```bash
+./moodle_ddev.sh --php 8.4 --version 500
+```
+
+**Moodle 5.2 with PostgreSQL 16, custom admin settings, and custom target folder:**
+```bash
+./moodle_ddev.sh --php 8.4 --version 502 --db postgres:16 --root ~/dev/moodles --admincfg-csv ./admin_cfg.csv
+```
+
+**Install from a specific Git repository and feature branch:**
+```bash
+./moodle_ddev.sh --php 8.4 --version 502 --db mariadb --repo git@github.com:moodle/moodle.git@master
+```
+
+---
+
+## Admin Configuration via CSV (`--admincfg-csv`)
+
+Pre-set any Moodle core or plugin admin configuration automatically during installation using a CSV file.
+
+Example `admin_cfg.csv`:
+```csv
+NAME,VALUE,COMPONENT
+debug,30719,
+debugdisplay,1,
+cachejs,0,
+langlist,"de,fr,en",
+theme,boost,
+```
+
+- `NAME`: The configuration setting key (as used in `$CFG-><name>`).
+- `VALUE`: The value to set.
+- `COMPONENT`: (Optional) Plugin component name if setting a plugin configuration.
+
+---
+
+## Project Structure
+
+Projects are named using the Moodle version, PHP version, and database engine:
+
+### Moodle 4.x and 5.0 Structure:
+```
+moodle405-php8.3-mariadb/
+├── moodle/               # Moodle core code
+├── moodledata/           # Moodle data directory
+├── momopda/              # MoMoPDA prompt library
+├── .prompts/ -> momopda/.prompts/
+├── AGENTS.md -> momopda/AGENTS.md
+├── CLAUDE.md
+├── .cursorrules
+├── .cursor/rules/moodle-momopda.mdc
+├── .windsurfrules
+├── .github/copilot-instructions.md
+├── .junie/guidelines.md
+├── GEMINI.md
+├── .env / .env.ai
+└── .ddev/
+    ├── config.yaml
+    ├── docker-compose.momopda.yaml
+    ├── docker-compose.mounts.yaml
+    ├── web-build/
+    │   ├── Dockerfile
+    │   └── Dockerfile.cron
+    └── web-entrypoint.d/
+        ├── moodle-cron.sh
+        └── moodle-ai-env.sh
+```
+
+### Moodle 5.1+ Structure (`public/` directory):
+```
+moodle502-php8.4-mariadb/
+├── moodle/
+│   ├── ...
+│   └── public/           # Document root for Moodle 5.1+
+├── moodledata/
+├── momopda/
+...
+```
+
+---
+
+## MoMoPDA AI Agent Support
+
+All generated projects are pre-wired for seamless integration with AI coding assistants using the [MoMoPDA](https://github.com/wilenius/momopda) prompt library.
+
+- **Orchestration & Rules**: Projects include linked instruction files for Claude Code (`CLAUDE.md`), Cursor (`.cursorrules`, `.cursor/rules/moodle-momopda.mdc`), Windsurf (`.windsurfrules`), GitHub Copilot (`.github/copilot-instructions.md`), JetBrains Junie (`.junie/guidelines.md`), Gemini (`GEMINI.md`), and general agentic frameworks (`AGENTS.md`, `.prompts/`).
+- **Environment Exports**: Automatically configures `MOODLE_DIR` (pointing to Moodle core) and `MOMOPDA_DIR` in `.env`, `.env.ai`, and DDEV web containers for plugin CI validation tools (PHP Lint, CodeChecker, PHPUnit, Behat).
+- **Control**: Use `--momopda [REPO_URL]` to point to a custom fork, or `--no-momopda` to omit AI agent files.
+
+---
+
+## Plugin Symlinking & Bind Mounts
+
+If `MOODLE_PLUGINS_REPO` is set, `post_custom_scripts/install_plugins_symlinks.sh` automatically scans the plugin directory for repositories matching `moodle-<type>_<name>` (e.g., `moodle-mod_questionnaire`, `moodle-block_activity_results`, `moodle-qtype_stack`).
+
+1. **Host Symlinks**: Creates symlinks in the Moodle tree (e.g. `moodle/mod/questionnaire` -> local git repo) so host IDEs can index and edit plugin code.
+2. **Container Mounts**: Generates `.ddev/docker-compose.mounts.yaml` to mount plugins into `/var/www/html/moodle/...`.
+3. **Mutagen Synchronization**: Automatically updates Mutagen ignore rules in `.ddev/mutagen/mutagen.yml` so Docker mounts function cleanly without broken container symlinks.
+
+---
+
+## In-Container Moodle Cron
+
+Moodle cron is configured automatically by `post_custom_scripts/setup_moodle_cron.sh`.
+
+- Runs every minute as the container's web user:
+  ```
+  * * * * * <webuser> /usr/bin/php /var/www/html/moodle/admin/cli/cron.php >>/var/log/moodle-cron.log 2>&1
+  ```
+- To monitor cron tasks:
+  ```bash
+  ddev exec tail -f /var/log/moodle-cron.log
+  ```
+- To run cron manually:
+  ```bash
+  ddev exec php moodle/admin/cli/cron.php
+  ```
+
+---
+
+## Custom Lifecycle Hooks
+
+You can add custom automation scripts before or after Moodle installation by placing executable `.sh` scripts in `pre_custom_scripts/` or `post_custom_scripts/`.
+
+Every hook script receives 6 positional arguments:
+1. `$1`: Project root directory (host path)
+2. `$2`: Moodle public docroot (`./moodle` or `./moodle/public`)
+3. `$3`: DDEV describe JSON data (`ddev describe -j`)
+4. `$4`: Moodle version (e.g. `502`)
+5. `$5`: PHP version (e.g. `8.4`)
+6. `$6`: Database type (e.g. `mariadb:10.11`)
+
+---
+
+## Batch Scripts
+
+### `run_all.sh` (Batch Installer)
+
+Install multiple Moodle environments in batch. Automatically skips incompatible Moodle/PHP combinations.
+
+```bash
+./run_all.sh [OPTIONS]
+```
+
+**Options:**
+- `--moodle <"405 500 501 502">`: Space-separated list of Moodle versions.
+- `--php <"8.2 8.3 8.4">`: Space-separated list of PHP versions.
+- `--db <"mariadb pgsql">`: Space-separated list of DB types.
+- `--moodle-csv <"405,500,501,502">`: Comma-separated list of Moodle versions.
+- `--php-csv <"8.2,8.3,8.4">`: Comma-separated list of PHP versions.
+- `--db-csv <"mariadb,pgsql">`: Comma-separated list of DB types.
+- `--admincfg-csv <path>`: Admin configuration CSV file.
+- `--root <folder>`: Target parent folder.
+- `--force`: Overwrite existing folders and databases.
+
+### `sub/ddev_describe_all.sh` (Batch Status Inspector)
+
+Displays the URL, database port, Mailpit web interface, and container status for all DDEV projects in a directory:
+
+```bash
+./sub/ddev_describe_all.sh [--root <folder>]
+```
+
+Example output:
+```
+===== ALL DDEVs in /Users/dev/moodles =====
+moodle501-php8-4-mariadb (💚)
+    Root ←          /Users/dev/moodles/moodle501-php8.4-mariadb
     Web ←           https://moodle501-php8-4-mariadb.ddev.site
     Database ←      127.0.0.1:32834  
     Mailpit ←       https://moodle501-php8-4-mariadb.ddev.site:8026  
 --------
 moodle502-php8-4-pgsql_16 (💚)
-    Root ←          /Users/bdb3/Documents/dev/_dockers/moodles/moodle502-php8-4-pgsql_16
+    Root ←          /Users/dev/moodles/moodle502-php8-4-pgsql_16
     Web ←           https://moodle502-php8-4-pgsql-16.ddev.site
     Database ←      127.0.0.1:32789  
     Mailpit ←       https://moodle502-php8-4-pgsql-16.ddev.site:8026  
---------
-moodle502-php8.3-mariadb (💚)
-    Root ←          /Users/bdb3/Documents/dev/_dockers/moodles/moodle502-php8.3-mariadb
-    Web ←           https://moodle502-php8-3-mariadb.ddev.site
-    Database ←      127.0.0.1:32788  
-    Mailpit ←       https://moodle502-php8-3-mariadb.ddev.site:8026  
---------
-moodle502-php8.4-mariadb (🔴)
-    Root ←          /Users/bdb3/Documents/dev/_dockers/moodles/moodle502-php8.4-mariadb
-    Web ←           https://moodle502-php8-4-mariadb.ddev.site
-    Database ←      127.0.0.1:  
-    Mailpit ←       https://moodle502-php8-4-mariadb.ddev.site:8026  
 ```
 
-🔴 = not started
-💚 = running
+### `moodle_ddev_delete.sh` (Single Delete)
 
-To get more detail info, navigate in each folder and do
-```
-ddev describe
-```
-
-__sub/list_available_ide.sh__
-Prints out a list of found IDEs in your system. (this script is used by the main 'moodle_ddev.sh' script )
-
-## Dependencies
-
-### DDEV v1.21+
-[DDEV](https://ddev.com/) _Container superpowers with zero required Docker skills: environments in minutes, multiple concurrent projects, and less time to deployment._
-
-### DOCKER
-When installing ddev you would also need a docker install follow the get started https://ddev.com/get-started/
-
-### COMPOSER
-https://getcomposer.org/
-
-### JQ
-JSON parser to get ddev variables to pass it to the moodle cli admin install.
-(The moodle fullname and short name will be based on install name using given versions and db type)
-
-MAC:
-https://formulae.brew.sh/formula/jq
-LINUX:
-https://jqlang.org/
-
-### Python
-To parse a plugin folder and generate symlinks for the IDE and ddev mounts so that development of the plugins are unified and not duplicate.
-There is python script that does it... 
-
-@todo translate to bash.
-
-Run this setup in bash should your python installed sandboxed.
-```bash
-python3 -m venv venv
-source venv/bin/activate
-pip install pyyaml
-source /Users/bdb3/Documents/dev/git_repos/moodle-ddev-setup/venv/bin/activate
-````
-
-## Setup
-
-### Executables
-make sure the needed scripts are executable:
-```bash
-chmod +x ./moodle_ddev.sh
-chmod +x ./moodle_ddev_delete.sh
-chmod +x ./moodle_ddev.sh
-```
-
-### ENV (optional)
-If you whish add a global MOODLE_DDEVS_DIR env variable with the main root folder where you want you ddev install to sit in.
-
-## moodle-ddev.sh (Main script)
-
-### Params
-
-__--version__ (moodle version in 'stable' or 'minor' format. 4.1, 401, 4.2.1 etc. ).  
-__--php__ (php version from 8.0 to 8.4).
-__--db__ (mariadb|mysqli|pgsql). OPTIONAL, defaults to mariadb.  
-__--repo__ (composer|<REPO>[@<BRANCH>]) pass it a git repository and optionally a branch, else 'composer'.  
-
-__--root__ OPTIONAL, If not passed than the script will do the install in MOODLE_DDEVS_DIR env variable, if set else, at the same level the script is launched.  
-__--admincfg-csv__ OPTIONAL, You can pass a simple CSV file with all the admin config you'd like to be pre set. The file must have NAME,VALUE header,. Expl :  
-__--ide__ OPTIONAL, pass an IDE name so that the script opens it once installation is finished.
-
-```
-NAME,VALUE
-debug,30719
-cachejs,0
-langlist,"de,fr,en"
-```
-
-You can use any name found in the admin (unless from a additinal plugin)
-
-![](pix/expl001.png)
-
-__--force__ Use this if you want to override an existing installation. OPTIONAL.  
+Cleanly delete an instance along with its database volume and project directory:
 
 ```bash
-./moodle_ddev.sh --php <version> --version <moodle_version> [--db <mariadb|mysql|postgres>] [--force] [--root <folder>]
+./moodle_ddev_delete.sh <path_to_project_folder> [--silent]
 ```
 
-Expl :
+### `delete_all.sh` (Batch Delete)
 
-```
-./moodle_ddev.sh --php 8.4 --version 501
-```
+Cleanly delete all DDEV Moodle instances found inside a directory:
 
 ```bash
-./moodle_ddev.sh --php 8.4 --version 501 --db postgres --root ~/dev/moodles --git 
+./delete_all.sh [--root <folder>]
 ```
 
-```bash
-./moodle_ddev.sh --php 8.4 --version 501 --db postgres --repo git@github.com:brunobaudry/moodle.git@MDL-12345-main
-```
-
-### Custom post scripts
-There are lost of thing you might want to do once the install is done, like adding plugins, language packs or run some tests etc...
-you can write you own scripts and place them in the 'custom_scripts' folder.
-
-__moodle_ddev.sh__ will launch them all passing the following 6 arguments:
-
-1. The Project root
-2. Moodle public folder
-3. DDEV describe JSON data
-4. Moodle version
-5. PHP version
-6. Database type
-
-
-### Interactive mode
-You can also run it without parameters,
-The script will ask you to enter each value one by one.
-
-```bash
-./moodle_ddev.sh
-```
-Then you'll be prompted to enter the parameters.
-There are default values in (parenthesis).
-
-### Install directories naming and sctructure
-The projects main folder will be named with the moodle, the php and the db versions :
-
-```
-├── moodle4.3.2-php8.2-mariadb
-│   ├── moodle
-│   └── moodledata
-├── moodle405-php8.4-postgres
-│   ├── moodle
-│   └── moodledata
-
-#### 5.1 structure
-├── moodle501-php8.4-mysql
-│   ├── moodle
-│   |    ├── ...
-│   |    └── public
-│   └── moodledata
-```
-
-### Output
-When the script finishes, it will output an abstrct of the "ddev describe"
-
-Expl:
-✅ Moodle 405 with PHP 8.2 setup completed using DDEV.  
-🔗 Admin site: https://moodle405-php8.2-mariadb.ddev.site.  
-📧 Mailpit site: https://moodle405-php8.2-mariadb.ddev.site:8026.  
-🔐 Admin password: 1234.  
-
-## run_all.sh
-
-If no parameter are given
-
-The script will create all combinaisons of :  
-__Arrays of versions__
-MOODLE_VERSIONS=("401" "402" "403" "404" "405" "500" "501")
-PHP_VERSIONS=("7.4" "8.0" "8.1" "8.2" "8.3" "8.4")
-DB_TYPES=("mariadb" "mysqli" "pgsql")
-
-And it will skipp non compatible versions  (moodle vs php)
-
-| MOOODLE   | PHP   |
-|-----|-------------|
-| 4.1 (401) | 7.4 8.0 8.1 |
-| 4.2 | 8.0 8.1 8.2 |
-| 4.3 | 8.0 8.1 8.2 |
-| 4.4 | 8.1 8.2 8.3 |
-| 4.5 | 8.1 8.2 8.3 |
-| 5.0 | 8.2 8.3 8.4 |
-| 5.1 (501) | 8.2 8.3 8.4 |
-
-| PHP   | MOODLE   |
-|-----|-------------|
-| 7.4  |  4.1 (401) |
-| 8.0 | 401 402 403 |
-| 8.1 | 401 402 403 404 |
-| 8.2 | 402 403 404 405 500 |
-| 8.3 | 404 405 500 501 |
-| 8.4 | 500 5.1 (501) |
-
-
-### Params
-
-__--moodle__ space-separated subset list of moodle versions.  
-__--php__ space-separated subset list of php versions.  
-__--db__ space-separated subset list of db types.  
-__--moodle-csv__ space-separated subset list of moodle versions.  
-__--php-csv__ space-separated subset list of php versions.  
-__--db-csv__ space-separated subset list of db types.  
-
-__--root__ The parent folder (OPTIONAL).  
-__--force__ overrwrite fodlers if same names are found (OPTIONAL).  
-
-### Count of instances limit
-
-If you exceed the number of ip, you can face an error  
-
-```
-failed to create network ddev-moodleXXX-phpYY-ZZZ: 
-Error response from daemon: all predefined address pools have been fully subnetted
-```
-
-you can configure Docker to have more IP ranges:
-
-Edit or create /etc/docker/daemon.json (or Docker Desktop settings → Docker Engine) expl:
-
-``` json
-{  
-    "default-address-pools": [
-                                {"base":"172.80.0.0/16","size":24},
-                                {"base":"172.90.0.0/16","size":24}
-                            ]
-}
-```
-
-Restart Docker after saving.
-
-(Check dockers/ddev docs for more on that)
-
-## MoMoPDA AI Agent Support
-
-Projects generated with `moodle_ddev.sh` include [MoMoPDA](https://github.com/wilenius/momopda) (Modular Moodle Plugin Development Assistant) to empower AI agent assistants (Claude Code, Cursor, GitHub Copilot, JetBrains Junie, Windsurf, Gemini, etc.) with structured Moodle development instructions, security checklists, coding standards, and CI validation rules.
-
-### Features
-- **Prompt Library & Orchestration**: Clones MoMoPDA into `momopda/` and links `.prompts/`, `AGENTS.md`, `CLAUDE.md`, `.cursorrules`, `.windsurfrules`, `.github/copilot-instructions.md`, `.junie/guidelines.md`, and `GEMINI.md` at the project root.
-- **Environment Configuration**: Automatically sets `MOODLE_DIR` (pointing to Moodle core) and `MOMOPDA_DIR` in `.env`, `.env.ai`, `.ddev/docker-compose.momopda.yaml`, and container profile scripts (`.ddev/web-entrypoint.d/moodle-ai-env.sh`) for Moodle Plugin CI.
-- **Options**:
-  - `--momopda [REPO_URL]`: Use a custom MoMoPDA repository or fork.
-  - `--no-momopda`: Skip MoMoPDA integration during setup.
-
-## moodle_ddev_delete.sh
-
-use the moodle_ddev_delete.sh to remove an installation cleany.
-
-```
-moodle_ddev_delete.sh <main_folder_path>
-```
-
-Expl:
-```
-├── moodle501-php8.4-mysql
-│   ├── moodle
-│   |    ├── ...
-│   |    └── public
-│   └── moodledata
-
-moodle_ddev_delete.sh /PATH_TO_THE_FOLDER/moodle501-php8.4-mysql
-
-```
-
-## delete_all.sh
-The script will unset all ddev projects found with the combinaisons of :  
-__Arrays of versions__
-
-MOODLE_VERSIONS=("401" "402" "403" "404" "405" "500" "501").  
-PHP_VERSIONS=("7.4" "8.0" "8.1" "8.2" "8.3" "8.4").  
-DB_TYPES=("mariadb" "mysqli" "pgsql").  
-
-_Basic script. if the forlder is not found, or the versions are incompatible it will just display a message but continue to the next._
-
-_This script does not batch delete project created with a git repo._
-
-### Params
-
-__--root__ The parent folder (OPTIONAL).
+---
 
 ## Troubleshooting
 
 ### `Moodle CLI installation failed` / `Database tables already present`
-
-The DDEV project name is derived from the folder name, and DDEV keeps the
-database in a **docker volume keyed on that name**. Deleting the folder does not
-delete the volume — so re-installing over an existing project name re-attaches a
-database that still holds the previous Moodle tables, and
-`admin/cli/install.php` refuses to continue.
-
-`--force` now purges the DDEV project (containers *and* database volume) before
-recreating, and the duplicate check looks at the DDEV registration as well as
-the folder — so an orphaned project whose folder was deleted is caught too.
-
-To clear it by hand:
-
+DDEV stores databases in named Docker volumes. If a project folder was deleted without running `ddev delete`, the volume persists. Use `--force` with `moodle_ddev.sh` or delete manually:
 ```bash
-ddev delete --omit-snapshot -y moodle501-php8-4-mariadb
+ddev delete --omit-snapshot -y <project_name>
 ```
 
-Note the project name uses dashes where the folder name has dots
-(`moodle501-php8.4-mariadb` → `moodle501-php8-4-mariadb`).
-
-### `Required locale 'en_AU.UTF-8' is not installed.`
-
-Moodle hardcodes `en_AU.UTF-8` for its test runners (`phpunit_util::get_locale_name()`),
-so both `admin/tool/phpunit/cli/init.php` and the Behat runner abort without it.
-There is no `$CFG` setting to change it.
-
-DDEV's web image ships a *pre-trimmed* `/etc/locale.gen` containing only a
-handful of already-uncommented locales — there is no `en_AU` line to uncomment.
-`sub/dockerfiles.sh` therefore **appends** the entry in
-`.ddev/web-build/Dockerfile` before running `locale-gen`, and the build fails
-loudly if the locale still isn't there. `moodle_ddev.sh` re-checks it in the
-running container right after `ddev restart`.
-
-To repair a project created before this fix:
-
+### `Required locale 'en_AU.UTF-8' is not installed`
+Moodle test runners hardcode `en_AU.UTF-8` for date/time formatting. `sub/dockerfiles.sh` automatically adds this locale to `.ddev/web-build/Dockerfile`. To repair an existing container:
 ```bash
-cd /PATH_TO_THE_FOLDER/moodle501-php8.4-mariadb
 ddev exec -s web sudo bash -c "echo 'en_AU.UTF-8 UTF-8' >> /etc/locale.gen && locale-gen"
-```
-
-That patches the running container only. For a persistent fix, regenerate
-`.ddev/web-build/Dockerfile` and rebuild the image:
-
-```bash
-source /PATH_TO/moodle-ddev-setup/sub/dockerfiles.sh
-makedockerfile_forlocale ".ddev/web-build" "8.4"
 ddev restart
 ```
 
-Verify with:
-
-```bash
-ddev exec 'locale -a | grep -i au'   # expects en_AU.utf8
+### Docker Subnet / Address Pool Limit
+When running numerous concurrent DDEV instances, Docker may exhaust IP subnets (`all predefined address pools have been fully subnetted`). Configure larger address pools in `/etc/docker/daemon.json` (or Docker Desktop -> Docker Engine):
+```json
+{
+  "default-address-pools": [
+    { "base": "172.80.0.0/16", "size": 24 },
+    { "base": "172.90.0.0/16", "size": 24 }
+  ]
+}
 ```
+Restart Docker after saving.
 
-## Todo
-- add moodle plugins
-- add behat and phpunit setup
-- add mounts
-- add prefered ide default basic template setup
-- add phpmyadmin
+### `Moodle upgrade pending, cron execution suspended`
+If plugins are symlinked into Moodle, cron suspends execution until the upgrade completes. Run:
+```bash
+ddev exec php ./moodle/admin/cli/upgrade.php --non-interactive --allow-unstable
+```
