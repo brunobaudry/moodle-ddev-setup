@@ -12,6 +12,7 @@ Install moodle instance with ddev for development.
 - choose the directory where you want it installed.
 - pass a CSV table with all the admin settings you want to set.
 - add some custom post scripts to tailor your installations.
+- include MoMoPDA (Modular Moodle Plugin Development Assistant) prompt library and environment configuration for AI agents (Claude Code, Cursor, Copilot, Junie, Windsurf, Gemini, etc.).
 - Start developping and testing in less than a minute using a clean moodle install ready under ddev generated url on your locahost.
 
 __moodle-ddev_delete.sh__ 
@@ -284,6 +285,17 @@ Edit or create /etc/docker/daemon.json (or Docker Desktop settings → Docker En
 Restart Docker after saving.
 
 (Check dockers/ddev docs for more on that)
+
+## MoMoPDA AI Agent Support
+
+Projects generated with `moodle_ddev.sh` include [MoMoPDA](https://github.com/wilenius/momopda) (Modular Moodle Plugin Development Assistant) to empower AI agent assistants (Claude Code, Cursor, GitHub Copilot, JetBrains Junie, Windsurf, Gemini, etc.) with structured Moodle development instructions, security checklists, coding standards, and CI validation rules.
+
+### Features
+- **Prompt Library & Orchestration**: Clones MoMoPDA into `momopda/` and links `.prompts/`, `AGENTS.md`, `CLAUDE.md`, `.cursorrules`, `.windsurfrules`, `.github/copilot-instructions.md`, `.junie/guidelines.md`, and `GEMINI.md` at the project root.
+- **Environment Configuration**: Automatically sets `MOODLE_DIR` (pointing to Moodle core) and `MOMOPDA_DIR` in `.env`, `.env.ai`, `.ddev/docker-compose.momopda.yaml`, and container profile scripts (`.ddev/web-entrypoint.d/moodle-ai-env.sh`) for Moodle Plugin CI.
+- **Options**:
+  - `--momopda [REPO_URL]`: Use a custom MoMoPDA repository or fork.
+  - `--no-momopda`: Skip MoMoPDA integration during setup.
 
 ## moodle_ddev_delete.sh
 

@@ -37,6 +37,7 @@ source ./sub/validators.sh
 source ./sub/repositories.sh
 source ./sub/admin_config.sh
 source ./sub/dockerfiles.sh
+source ./sub/momopda.sh
 
 # ------- VARS init ----------------
 IS_MODDLE_GIT=false
@@ -97,6 +98,19 @@ while [[ $# -gt 0 ]]; do
       fi
       open_ide=true
       ;;
+    --momopda)
+      if [[ -n "$2" && "$2" != -* ]]; then
+        export MOMOPDA_REPO="$2"
+        shift 2
+      else
+        export MOMOPDA_REPO="https://github.com/wilenius/momopda.git"
+        shift 1
+      fi
+      ;;
+    --no-momopda)
+      export MOMOPDA_REPO="none"
+      shift 1
+      ;;
 
     *)
       echo "❌ Unknown option: $1"
@@ -108,7 +122,9 @@ while [[ $# -gt 0 ]]; do
       [--force] 
       [--root <folder>] 
       [--admincfg-csv <path_to_csv>]
-      [--ide [IDE_NAME]]"
+      [--ide [IDE_NAME]]
+      [--momopda [REPO_URL]]
+      [--no-momopda]"
       exit 1
       ;;
   esac
@@ -336,7 +352,7 @@ cd "$project_dir" || exit
 mkdir moodle
 mkdir -p moodledata
 chmod -R 777 moodledata
-
+# 
 # -------------------------------
 # ✅ DDEV Config
 # -------------------------------
@@ -348,20 +364,6 @@ if [[ "$IS_MOODLE_ABOVE_500" == true ]]; then
   MOODLE_DOC_ROOT='./moodle/public'
 fi
 # --------- Create config ------------------
-
-# mkdir -p .ddev/web-build
-
-# cat <<'EOF' > .ddev/web-build/Dockerfile
-
-# ARG BASE_IMAGE
-# FROM $BASE_IMAGE
-
-# RUN apt-get update && apt-get install -y locales \
-#     && sed -i '/en_AU.UTF-8/s/^# //g' /etc/locale.gen \
-#     && locale-gen \
-#     && echo "LANG=en_AU.UTF-8" > /etc/default/locale \
-#     && echo "LC_ALL=en_AU.UTF-8" >> /etc/default/locale
-# EOF
 
 # ------------------------------------
 # ✅ Running additional pre custom scripts
@@ -394,8 +396,6 @@ ddev config \
   --php-version="$php_version" \
   --database="$ddev_db" \
 
-
-
 # 1.a setting crazy en_AU obligatory locale...
 
 makedockerfile_forlocale ".ddev/web-build" "$php_version"
@@ -403,18 +403,6 @@ makemoodleini ".ddev/php"
 
 # 2. Add Selenium override BEFORE starting
 makeselenium ".ddev"
-
-
-# ddev start
-
-# # Install cron and start service
-# ddev exec bash -c 'apt-get update && apt-get install -y cron && service cron start'
-
-# # Add Moodle cron job
-# ddev exec bash -c 'echo "* * * * * php /var/www/html/moodle/admin/cli/cron.php >/dev/null 2>&1" | crontab -'
-
-# # Check crontab
-# ddev exec crontab -l
 
 # hack as ddev will create MOODLE_DOC_ROOT but composer would complain ...
 if [[ "$IS_MOODLE_ABOVE_500" == true ]]; then
@@ -607,6 +595,9 @@ if [[ "$open_ide" == true ]]; then
       echo 'Invalid choice or IDE not available.'
   fi
 fi
+# -------------------------------
+# ✅ Setup Moodle Cron
+# -------------------------------
 # Moodle cron is set up by post_custom_scripts/setup_moodle_cron.sh, which the
 # post-custom-script loop above already runs with the standard DEFAULT_ARGS —
 # and it has to run *there*, before the `ddev restart`, so the web image picks
