@@ -11,3 +11,4 @@
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 echo ">>> Copying rebase script from $SCRIPT_DIR/../templates/ to $1"
 cp "$SCRIPT_DIR/../templates/rebase_moodle_upstream.sh" $1/
+chmod +x $1/rebase_moodle_upstream.sh
