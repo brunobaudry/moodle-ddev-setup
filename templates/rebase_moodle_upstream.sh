@@ -46,6 +46,9 @@
 # Variables can be passed like: export MOODLE_DIR=/path/to/your/moodle_repo
 # before running this script.
 ### End Help <-- do not remove
+### override MOODLE_DIR for this context
+MOODLE_DIR=./moodle
+
 s=''
 for arg in "$@"; do
   if [ "$arg" == '--help' ]; then
