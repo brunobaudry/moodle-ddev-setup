@@ -10,6 +10,8 @@ get_moodle_package() {
   local version="$1"
   if [[ -z "$version" ]]; then
     echo "moodle/moodle"
+  elif [[ "$version" == "main" ]]; then
+    echo "moodle/moodle:dev-main"
   elif [[ "$version" =~ ^(4|5)[0-9]{2}$ ]]; then
     echo "moodle/moodle:dev-MOODLE_${version}_STABLE"
   elif [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then

@@ -141,14 +141,14 @@ check_environment # Verifiy that the tools (docker, composer etc are there)
 # ------- MOODLE ----------
 if [[ -z "$moodle_version" ]]; then
   moodle_version=$DEFAULT_MOODLE
-  read -p "Moodle version. In 401~501 or 4.x.x/5.x.x formats: ($DEFAULT_MOODLE) " moodle_version
+  read -p "Moodle version. In 401~503, 4.x.x/5.x.x formats, or main: ($DEFAULT_MOODLE) " moodle_version
 fi
 if [[ -z "$moodle_version" ]]; then
   moodle_version=$DEFAULT_MOODLE
 fi
 
 if ! validate_moodle_version "$moodle_version"; then
-  echo "❌ Invalid Moodle version. Allowed: 401~501 or 4.x.x/5.x.x."
+  echo "❌ Invalid Moodle version. Allowed: 401~503, 4.x.x/5.x.x, or main."
   exit 1
 fi
 # ------- PHP ----------
@@ -251,6 +251,10 @@ if ! validate_db_with_compatibility "$moodle_version" "$php_version" "$db_type";
 fi
 
 # ------- REPOSITORY ----------
+if [[ "$moodle_version" == "main" && -z "$GIT_INPUT" ]]; then
+  GIT_INPUT="https://github.com/moodle/moodle.git@main"
+fi
+
 if [[ -z "$GIT_INPUT" ]]; then
   read -p "Repository source. Use git <git_repo_url>[@<branch>] or composer (composer): " GIT_INPUT
 fi
@@ -458,6 +462,7 @@ mailpiturl=$(echo "$DDEV_DESCRIBE" | jq -r '.raw.mailpit_https_url')
 if ! ddev exec php ./moodle/admin/cli/install.php \
   --non-interactive \
   --agree-license \
+  --allow-unstable \
   --wwwroot="$wwwroot" \
   --dataroot=/var/www/html/moodledata \
   --dbtype="$moodle_db_type" \

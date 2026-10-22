@@ -42,7 +42,7 @@ get_plugin_directory() {
     local plugin_path="${base_dir}/${plugin_name}"
 
     # Moodle 5.1+ uses public/ folder for web-accessible files
-    if (( $(echo "$moodle_version >= 5.1 || $moodle_version >= 501" | bc -l) )); then
+    if [[ "$moodle_version" == "main" ]] || (( $(echo "$moodle_version >= 5.1 || $moodle_version >= 501" | bc -l 2>/dev/null || echo 0) )); then
         echo "public/${plugin_path}"
     else
         echo "${plugin_path}"

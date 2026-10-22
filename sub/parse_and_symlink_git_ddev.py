@@ -56,7 +56,7 @@ def get_plugin_directory(plugin_type, plugin_name, moodle_version=501):
         plugin_path = os.path.join(base_dir, plugin_name)
 
         # Moodle 5.1+ uses public/ folder for web-accessible files
-        if moodle_version >= "501" :
+        if str(moodle_version) == "main" or str(moodle_version) >= "501":
             print("Moodle 5.1+ uses public/ folder")
             return os.path.join('public', plugin_path)
         return plugin_path
@@ -203,6 +203,9 @@ def normalize_moodle_version(input_version):
     """
 
     value = str(input_version).strip()
+
+    if value == "main":
+        return "main"
 
     # MOODLE_403_STABLE
     m = re.match(r"^MOODLE_(\d{3})_STABLE$", value)

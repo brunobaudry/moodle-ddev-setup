@@ -8,13 +8,14 @@ Deploy a clean, fully-configured Moodle instance ready on `localhost` / `*.ddev.
 
 ## Key Features
 
-- **Multi-Version Moodle Support**: Deploy any Moodle version from 4.1 (`401`) to 5.3+ (`503`), using standard version codes (e.g., `405`, `502`) or semantic versions (e.g., `4.5.1`, `5.1.0`).
-- **Moodle 5.1+ Web Root Handling**: Automatically configures DDEV docroot for Moodle 5.1+ (`moodle/public`) and earlier versions (`moodle/`).
+- **Multi-Version Moodle Support**: Deploy any Moodle version from 4.1 (`401`) to 5.3+ (`503`), semantic versions (e.g., `4.5.1`, `5.1.0`), or the latest development `main` branch.
+- **Moodle 5.1+ & Main Web Root Handling**: Automatically configures DDEV docroot for Moodle 5.1+ and `main` (`moodle/public`) or earlier versions (`moodle/`).
 - **PHP Version Matrix**: Supports PHP 7.4 through 8.4 with automated compatibility validation against Moodle versions.
-- **Database Engine Flexibility**: Choose MariaDB, MySQL, or PostgreSQL (`mariadb`, `mysqli`/`mysql`, `pgsql`/`postgres`/`postgresql`). Automatically applies the minimum required database version or accepts custom version tags (e.g., `mariadb:10.11`, `mysql:8.0`, `postgres:16`).
+- **Database Engine Flexibility**: Choose MariaDB, MySQL, or PostgreSQL (`mariadb`, `mysqli`/`mysql`, `pgsql`/`postgres`/`postgresql`). Automatically applies the minimum required database version or accepts custom version tags (e.g., `mariadb:10.11`, `mysql:8.4`, `postgres:17`).
 - **Flexible Source Modes**: 
-  - Install via Composer (default behaviour when only passing the Moodle version number)
-  - clone any Git repository and branch (e.g. `--repo git@github.com:user/moodle.git@MDL-12345-main`).
+  - Install via Composer (default behaviour when passing numerical Moodle versions).
+  - Install latest development branch directly by setting version to `main` (automatically defaults to cloning `https://github.com/moodle/moodle.git@main`).
+  - Clone any custom Git repository and branch (e.g. `--repo git@github.com:user/moodle.git@MDL-12345-main`).
 - **Automated Test Runners (PHPUnit & Behat)**:
   - Generates `en_AU.UTF-8` locale in `.ddev/web-build/Dockerfile` required by Moodle test runners.
   - Automatically configures `$CFG->phpunit_*` and `$CFG->behat_*` (including Selenium Chrome and Firefox browser profiles) in `config.php`.
@@ -113,10 +114,10 @@ Configure these in your shell profile (e.g., `~/.zshrc` or `~/.bashrc`):
 
 | Option | Description |
 |---|---|
-| `--version <version>` | Moodle version (e.g. `401`..`503` or `4.1.0`..`5.3.0`). Defaults to `502`. |
+| `--version <version>` | Moodle version (e.g. `401`..`503`, `4.1.0`..`5.3.0`, or `main`). Defaults to `502`. |
 | `--php <version>` | PHP version (`7.4`, `8.0`, `8.1`, `8.2`, `8.3`, `8.4`). Defaults to `8.4`. |
 | `--db <type[:version]>` | Database type: `mariadb`, `mysql`/`mysqli`, `pgsql`/`postgres`/`postgresql`. Optional version suffix (e.g. `mariadb:10.11`, `mysql:8.0`, `postgres:16`). Defaults to `mariadb`. |
-| `--repo <composer\|URL[@branch]>` | Source to install from: `composer` (default) or a Git repository with optional `@branch`. |
+| `--repo <composer\|URL[@branch]>` | Source to install from: `composer` (default for numerical versions), custom Git repository URL with optional `@branch`, or auto-defaults to `https://github.com/moodle/moodle.git@main` when version is `main`. |
 | `--root <folder>` | Parent directory for the installation. Defaults to `$MOODLE_DDEVS_DIR` or current directory. |
 | `--admincfg-csv <path>` | Path to a CSV file with `NAME,VALUE` or `NAME,VALUE,COMPONENT` pairs to pre-configure Moodle admin settings. |
 | `--ide [IDE_NAME]` | Open project in specified IDE (e.g. `phpstorm`, `code`, `cursor`) or prompt from available IDEs upon completion. |
@@ -140,6 +141,12 @@ the engine will normallize the project name with the following format and princi
 **Default installation (Interactive prompt):**
 ```bash
 ./moodle_ddev.sh
+```
+
+**Latest development Moodle from GitHub `main` branch:**
+```bash
+./moodle_ddev.sh --version main
+# moodle-main-84-mariadb-114
 ```
 
 **Moodle 5.0 with PHP 8.4 and MariaDB:**
@@ -214,12 +221,12 @@ moodle405-php8.3-mariadb/
         └── moodle-ai-env.sh
 ```
 
-### Moodle 5.1+ Structure (`public/` directory):
+### Moodle 5.1+ & `main` Structure (`public/` directory):
 ```
 moodle502-php8.4-mariadb/
 ├── moodle/
 │   ├── ...
-│   └── public/           # Document root for Moodle 5.1+
+│   └── public/           # Document root for Moodle 5.1+ and main branch
 ├── moodledata/
 ├── momopda/
 ...

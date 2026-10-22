@@ -26,6 +26,8 @@ validate_moodle_version() {
     return 0
   elif [[ "$version" =~ ^(4\.[0-5]\.[0-9]+|5\.0\.[0-9]+|5\.1\.[0-9]+|5\.2\.[0-9]+|5\.3\.[0-9]+)$ ]]; then
     return 0
+  elif [[ "$version" == "main" ]]; then
+    return 0
   else
     return 1
   fi
@@ -35,7 +37,9 @@ normalize_moodle_version() {
     local moodle
    
     # Normalize Moodle version
-  if [[ "$input" =~ ^MOODLE_([0-9]{3})_STABLE$ ]]; then
+  if [[ "$input" == "main" ]]; then
+    moodle="main"
+  elif [[ "$input" =~ ^MOODLE_([0-9]{3})_STABLE$ ]]; then
     moodle="${BASH_REMATCH[1]}"
   elif [[ "$input" =~ ^([0-9]+)\.([0-9]+)(\.[0-9]+)?$ ]]; then
     # Convert semantic version: major.minor → major*100 + minor
@@ -81,7 +85,7 @@ validate_compatibility() {
     502)
       [[ "$php" =~ ^(8\.3|8\.4)$ ]] && return 0
       ;;
-          503)
+    503|main)
       [[ "$php" =~ ^(8\.3|8\.4)$ ]] && return 0
       ;; 
   esac
@@ -92,6 +96,10 @@ validate_compatibility() {
 IS_MOODLE_ABOVE_500=false
 is_moodle_version_5_1_or_higher() {
   local version="$1"
+  if [[ "$version" == "main" ]]; then
+    IS_MOODLE_ABOVE_500=true
+    return 0
+  fi
   if [[ "$version" =~ ^[0-9]{3}$ ]]; then
     local major="${version:0:1}"
     local minor="${version:1:2}"
@@ -174,7 +182,7 @@ validate_db_compatibility() {
     local required_postgresql=""
     
     case "$moodle_version" in
-            5.3|5.3*|503)
+        main|5.3|5.3*|503)
             required_php="8.3"
             required_mariadb="11.4"
             required_mysql="8.4"
@@ -345,7 +353,11 @@ get_default_php_for_moodle_version(){
        php_version="8.4"
        php_all_version="8.2, 8.3, 8.4"
       ;;
-    502|503)
+    502)
+      php_version="8.4"
+      php_all_version="8.3, 8.4"
+      ;;
+    503|main)
       php_version="8.4"
       php_all_version="8.3, 8.4"
       ;;
@@ -364,7 +376,7 @@ get_min_db_version() {
     local required_postgresql=""
     
     case "$moodle_version" in
-        5.3|5.3*|503)
+        main|5.3|5.3*|503)
             required_mariadb="11.4"
             required_mysql="8.4"
             required_postgresql="17"
