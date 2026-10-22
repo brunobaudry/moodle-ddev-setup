@@ -142,4 +142,4 @@ for moodle in "${MOODLE_VERSIONS[@]}"; do
     fi
   done
 done
-./sub/ddev_describe_all.sh --root "$root_folder"
+./ddev_describe_all.sh --root "$root_folder"
