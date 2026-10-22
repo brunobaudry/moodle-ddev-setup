@@ -112,7 +112,9 @@ CWD=$(pwd)
 cd $repodir
 
 git fetch $upstream
-
+if [ ! -z $dryrun ]; then
+   echo "Dry run, !"
+fi
 branches=$(git branch | tr -d \*)
 for b in $branches; do
   if [ ! -z $exclude ]; then
@@ -134,7 +136,9 @@ for b in $branches; do
   fi
 
   if [ ! -z $dryrun ]; then
-    echo "Dry run: $b"
+    if [ "$upbranch " != ' ' ]; then
+        echo "  will rebase: $b to $upstream/$upbranch"
+    fi
     continue
   fi
 
