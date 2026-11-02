@@ -1,0 +1,14 @@
+#!/bin/bash
+# echo "Subscript example/test :"
+# echo $1 # Project root
+# echo $2 # Moodle public
+# echo $3 | jq -r # DDEV describe
+# echo $4 # Moodle version
+# echo $5 # PHP version
+# echo $6 # Database type
+
+# wwwroot=$(echo "$3" | jq -r '.raw.primary_url')
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+echo ">>> Copying rebase script from $SCRIPT_DIR/../templates/ to $1"
+cp "$SCRIPT_DIR/../templates/run_all_tests.sh" $1/
+chmod +x $1/rebase_moodle_upstream.sh
