@@ -143,22 +143,22 @@ for b in $branches; do
   fi
 
   if [ "$upbranch " != ' ' ]; then
-    git checkout $b
+    # Verify that the target upstream branch exists
+    if ! git show-ref --verify --quiet "refs/remotes/$upstream/$upbranch"; then
+      echo "skip $b because upstream branch $upstream/$upbranch does not exist"
+      continue
+    fi
+
+    git checkout "$b"
     if [ $? -ne 0 ]; then
       echo "Could not checkout branch $b"
       exit 1
     fi
-    br_up=$(git for-each-ref --format='%(upstream:short)' $(git symbolic-ref -q HEAD))
-    if [ "$br_up" == 'upstream/master' ] || [ "$br_up " == ' ' ]; then
-      br_up='upstream/main'
-    fi
-    if [ "$br_up" != "$upstream/$upbranch" ]; then
-      echo "skip $b because remote location is not $upstream but $br_up"
-      continue
-    fi
-    git rebase $upstream/$upbranch && git push origin $b -f
+
+    echo "Rebasing $b on $upstream/$upbranch and pushing to origin..."
+    git rebase "$upstream/$upbranch" && git push origin "$b" --force-with-lease
     if [ $? -ne 0 ]; then
-      echo "error updating branch."
+      echo "error updating branch $b."
       exit 1
     fi
   fi
