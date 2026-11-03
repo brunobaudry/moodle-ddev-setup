@@ -30,6 +30,7 @@ Runs both PHPUnit and Behat test suites for Moodle or a specific plugin.
 Options:
   --phpunit-only          Run only PHPUnit tests.
   --behat-only            Run only Behat tests.
+  --feature               Run only Behat tests on the feature.
   --filter <FILTER>       Filter for PHPUnit tests (e.g., test class or method).
   --testsuite <SUITE>     Specify PHPUnit testsuite (default: auto-detected plugin suite or all).
   --tags <TAGS>           Specify Behat tags (default: @<component> or all).
@@ -45,10 +46,12 @@ Environment Variables:
   XDEBUG_MODE             Controls Xdebug mode (default: off).
 
 Examples:
-  $0                                Run all PHPUnit and Behat tests.
-  $0 --filter test_something        Run PHPUnit with filter and then Behat.
-  $0 --tags "@javascript"           Run PHPUnit, then Behat with @javascript tag.
-  $0 --init                         Re-initialize environments before running.
+  $0                                                      Run all PHPUnit and Behat tests.
+  $0 --filter test_something                              Run PHPUnit with filter and then Behat.
+  $0 --tags "@javascript"                                 Run PHPUnit, then Behat with @javascript tag.
+  $0 --feature "path/to/my.feature"                       Run path/to/my.feature Behat only.
+  $0 --feature "path/to/my.feature" --tags "@javascript"  Run path/to/my.feature Behat with @javascript tag only.
+  $0 --init                                               Re-initialize environments before running.
 EOF
 }
 
@@ -217,9 +220,16 @@ BEHAT_PROFILE="${BEHAT_PROFILE:-chrome}"
 FORCE_INIT=false
 SHOW_DEPRECATIONS=false
 FAIL_FAST=false
+BEHAT_FEATURE=""
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
+        --feature)
+            BEHAT_FEATURE="$2"
+            RUN_PHPUNIT=false
+            RUN_BEHAT=true
+            shift 2
+            ;;
         --phpunit-only)
             RUN_PHPUNIT=true
             RUN_BEHAT=false
@@ -372,6 +382,7 @@ run_behat() {
     fi
 
     local cmd=("$behat_bin" --config "$behat_config" --profile "$BEHAT_PROFILE" -vvv)
+    [[ -n "$BEHAT_FEATURE" ]] && cmd+=("$BEHAT_FEATURE")
     [[ -n "$tags" ]] && cmd+=("--tags=$tags")
     $FAIL_FAST && cmd+=(--stop-on-failure)
 
